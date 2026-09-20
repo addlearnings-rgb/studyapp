@@ -3,23 +3,481 @@
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mathematics Evaluation Testing Portal</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+/* ==========================================================================
+   1. GLOBAL ARCHITECTURE & SYSTEM THEME TOKENS
+   ========================================================================== */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* OLED/True Black Dark Theme for Optimal Visuals & Battery Saving */
+:root,
+html[data-theme="dark"],
+[data-theme="dark"] {
+    --primary: #3b82f6;      
+    --primary-hover: #2563eb;
+    --success: #22c55e;
+    --error: #ef4444;
+    --background: #000000;   
+    --surface: #121212;      
+    --text-main: #f8fafc;    
+    --text-muted: #9ca3af;   
+    --border: #27272a;       
+    color-scheme: dark;
+}
+
+/* Light Theme Overrides (High-contrast surface & card separation) */
+html[data-theme="light"],
+[data-theme="light"] {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --success: #16a34a;
+    --error: #dc2626;
+    --background: #f1f5f9;   
+    --surface: #ffffff;      
+    --text-main: #0f172a;    
+    --text-muted: #64748b;   
+    --border: #cbd5e1;       
+    color-scheme: light;
+}
+
+html {
+    background-color: var(--background);
+    color: var(--text-main);
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--background);
+    color: var(--text-main);
+    margin: 0;
+    padding: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ==========================================================================
+   2. CORE CONTAINER WRAPPERS & LAYOUT
+   ========================================================================== */
+.card, .panel {
+    background: var(--surface);
+    color: var(--text-main);
+    padding: 30px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+[data-theme="light"] .card, 
+[data-theme="light"] .panel {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.hidden { display: none !important; }
+
+.config-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.theme-toggle-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+}
+
+/* ==========================================================================
+   3. TYPOGRAPHY
+   ========================================================================== */
+h2 {
+    margin-top: 0;
+    font-size: 26px;
+    color: var(--text-main);
+    line-height: 1.3;
+}
+
+h3 {
+    font-size: 19px;
+    line-height: 1.5;
+    margin: 0 0 16px 0;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+pre, code {
+    font-family: 'Courier New', Courier, monospace;
+    background-color: var(--background);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: #f43f5e;
+}
+
+/* ==========================================================================
+   4. FORM ELEMENTS & INPUTS
+   ========================================================================== */
+label:not(.btn) {
+    display: block;
+    margin-top: 8px;
+    margin-bottom: 4px;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.75px;
+    color: var(--text-muted);
+}
+
+.input-container { position: relative; width: 100%; }
+
+input[type="text"], 
+input[type="password"], 
+textarea {
+    width: 100%;
+    padding: 10px 42px 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    box-sizing: border-box;
+    background-color: var(--background);
+    color: var(--text-main);
+    transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+
+input[type="file"] {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    box-sizing: border-box;
+    background-color: var(--background);
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+input[type="file"]::file-selector-button {
+    background: var(--surface);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-right: 10px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.15s ease;
+}
+input[type="file"]::file-selector-button:hover {
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+}
+
+select {
+    width: 100%;
+    height: 42px;
+    padding: 10px 32px 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    box-sizing: border-box;
+    background-color: var(--background);
+    color: var(--text-main);
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239ca3af' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+select option { background-color: var(--surface); color: var(--text-main); padding: 8px 12px; }
+
+textarea { resize: vertical; min-height: 64px; font-family: inherit; padding: 10px 12px; }
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.reveal-btn {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    user-select: none;
+}
+.reveal-btn:hover { color: var(--text-main); }
+
+/* ==========================================================================
+   5. MULTI-SELECT DROPDOWN
+   ========================================================================== */
+.multiselect-box { position: relative; width: 100%; }
+
+.select-trigger {
+    min-height: 42px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    background: var(--background);
+    font-size: 14px;
+    color: var(--text-main);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+    user-select: none;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.select-trigger:hover { border-color: var(--primary); }
+
+.checkbox-dropdown {
+    position: relative;
+    margin-top: 6px;
+    margin-bottom: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 6px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+}
+
+.checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    color: var(--text-main);
+    user-select: none;
+    transition: background-color 0.1s ease;
+}
+.checkbox-option:hover {
+    background-color: #1e3a8a;
+    color: #ffffff;
+}
+[data-theme="light"] .checkbox-option:hover { background-color: var(--primary); }
+
+.checkbox-option input[type="checkbox"] {
+    margin: 0; cursor: pointer; width: 16px; height: 16px;
+}
+
+/* ==========================================================================
+   6. RANGE SLIDERS
+   ========================================================================== */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    outline: none;
+    margin: 6px 0;
+    padding: 0;
+    border: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: none;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+input[type="range"]::-moz-range-thumb:hover { transform: scale(1.15); }
+
+/* ==========================================================================
+   7. BUTTON SYSTEM
+   ========================================================================== */
+.btn {
+    display: block;
+    width: 100%;
+    background: var(--primary);
+    color: #ffffff;
+    border: none;
+    padding: 12px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    margin-top: 18px;
+    text-align: center;
+    box-sizing: border-box;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+.btn:hover:not(:disabled) { background: var(--primary-hover); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-secondary { 
+    background: #27272a; 
+    color: #f8fafc;
+    border: 1px solid var(--border);
+}
+.btn-secondary:hover:not(:disabled) { background: #3f3f46; }
+
+[data-theme="light"] .btn-secondary { 
+    background: #e2e8f0; 
+    color: #0f172a; 
+    border: 1px solid #cbd5e1;
+}
+[data-theme="light"] .btn-secondary:hover:not(:disabled) { background: #cbd5e1; }
+
+.option-btn {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 48px;
+    background: var(--background);
+    color: var(--text-main);
+    text-align: left;
+    border: 1px solid var(--border);
+    margin-top: 12px;
+    font-weight: 400;
+    padding: 14px 16px;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.4;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.option-btn:hover:not(:disabled) { 
+    background: var(--surface); 
+    border-color: var(--text-muted);
+}
+
+.reveal-correct { 
+    background-color: #064e3b !important;
+    border-color: var(--success) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+}
+.reveal-incorrect { 
+    background-color: #7f1d1d !important;
+    border-color: var(--error) !important;
+    color: #ffffff !important;
+}
+
+/* ==========================================================================
+   8. PREVIEW, METRICS DASHBOARD & STATUS UTILITIES
+   ========================================================================== */
+#llm-metrics-card { transition: background-color 0.2s ease, border-color 0.2s ease; }
+#hud-gamification-bar { transition: background-color 0.2s ease, border-color 0.2s ease; }
+
+#hint-display-box {
+    line-height: 1.5;
+    animation: fadeInSlide 0.2s ease-out;
+}
+
+@keyframes fadeInSlide {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.preview-item {
+    border-bottom: 1px solid var(--border);
+    padding: 14px 6px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+.preview-item:last-child { border-bottom: none; }
+
+.preview-item input[type="checkbox"] { margin-top: 2px; cursor: pointer; width: 18px; height: 18px; }
+
+#deployment-success-banner { animation: fadeInSlide 0.25s ease-out; }
+
+#status-display {
+    margin-top: 20px;
+    padding: 12px;
+    border-radius: 6px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    font-size: 14px;
+    text-align: center;
+    color: var(--text-muted);
+    font-weight: 500;
+    line-height: 1.4;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--background); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    </style>
 </head>
 <body>
     <div class="panel" style="max-width:540px; margin:auto; position:relative;">
         <div style="text-align:right;"><button id="theme-switcher-btn" class="btn btn-secondary" style="width:auto; margin:0; padding:6px 12px; font-size:12px;" onclick="toggleUIMode()">☀️ Light Mode</button></div>
+        
         <div id="login-screen">
             <h2>Active Portal: Mathematics</h2>
-            <p style="color:var(--text-muted); font-size:14px; margin-top:-5px;">Topic Context: Percentage | Target: Grade 4, Grade 5</p>
+            <p style="color:var(--text-muted); font-size:14px; margin-top:-5px;">Topic Context: Percentages | Target: Grade 4, Grade 5, Grade 6</p>
             <label>User Verification Handle</label>
-            <input type="text" id="username" placeholder="Enter student identifier..." style="margin-top:5px; margin-bottom:15px;">
+            <input type="text" id="username" placeholder="Enter student identifier (e.g. Student Name)..." style="margin-top:5px; margin-bottom:15px;">
             <button class="btn" onclick="startExamEngine()">Authenticate Session</button>
         </div>
+        
         <div id="exam-screen" class="hidden">
             <div class="meta-row"><span id="progress-text"></span><span id="clock-display" style="font-weight:600; color:var(--primary);">Clock running...</span></div>
             <h3 id="question-text">Reading matrix node data...</h3>
             <div id="options-container"></div>
         </div>
+        
         <div id="result-screen" class="hidden">
             <h2>Session Terminated</h2><div id="stats-summary"></div>
             <button class="btn" onclick="downloadExamCSV()">📥 Extract Performance Logs (CSV)</button>
@@ -27,12 +485,452 @@
     </div>
     <script>
         const examConfig = { 
-            timeLimitMinutes: 120, 
+            timeLimitMinutes: 10, 
             showCorrectOnSubmit: "yes",
             gamification: {"enabled":true,"scoring":{"basePointsPerCorrect":100,"timeBonus":{"enabled":true,"maxBonusPoints":50,"speedBenchmarkSeconds":15},"streakMultiplier":{"enabled":true,"streakThreshold":3,"multiplierIncrement":0.25,"maxMultiplier":2.5}},"lifelines":{"fiftyFiftyCount":1,"aiHintCount":2,"freezeTimerCount":1,"freezeDurationSeconds":30},"ranks":[{"name":"Novice","minScore":0,"badge":"🌱"},{"name":"Scholar","minScore":1200,"badge":"⚡"},{"name":"Master","minScore":2800,"badge":"🔥"},{"name":"Grandmaster","minScore":4500,"badge":"👑"}],"soundEffects":{"enabled":true,"volume":0.6}}
         };
-        const examQuestions = [{"q":"A bag contains 5 red marbles and 5 blue marbles. What is the percentage of red marbles in the bag, expressed as a ratio of 5 out of 10?","options":["10 percent","25 percent","50 percent","75 percent"],"correct":2,"difficulty":"very low","hint":"Think about how many red marbles there are compared to the total number of marbles.","explanation":"Since 5 out of 10 marbles are red, this represents half of the total, which is equal to 50 percent."},{"q":"A fruit basket has 4 apples and 1 orange. What is the percentage of oranges in the basket, given the ratio of 1 orange to 5 total pieces of fruit?","options":["10 percent","20 percent","25 percent","40 percent"],"correct":1,"difficulty":"very low","hint":"To find the percentage, convert the ratio 1/5 so that the bottom number is 100.","explanation":"The ratio 1/5 is equal to 20/100, which represents 20 percent of the total fruit."}];
+        const examQuestions = [{"q":"What is 50 percent of 20?","options":["5","10","15","25"],"correct":1,"difficulty":"very low","hint":"Think of 50 percent as one-half of a whole number.","explanation":"50 percent is equivalent to the fraction 1/2, and half of 20 is 10."},{"q":"If a basket has 10 apples and 20 percent of them are green, how many apples are green?","options":["2","4","8","20"],"correct":0,"difficulty":"very low","hint":"20 percent is the same as 20 out of 100, or 2 out of 10.","explanation":"To find 20 percent of 10, you multiply 10 by 0.20, which equals 2."},{"q":"Which fraction is equal to 25 percent?","options":["1/2","1/3","1/4","1/5"],"correct":2,"difficulty":"very low","hint":"How many times does 25 go into 100?","explanation":"25 percent means 25 out of 100, which simplifies to the fraction 1/4."}];
     </script>
-    <script src="app.js"></script>
+    <script>
+// app.js - Enhanced Exam Runtime, Telemetry, Gamification & Lifeline Engine
+
+let currentQuestionIdx = 0;
+let studentName = "";
+let correctTally = 0;
+let incorrectTally = 0;
+let questionStartTime = 0;
+let countdownTimerInterval = null;
+let secondsLeft = 0;
+let isTimerFrozen = false;
+let freezeTimeoutId = null;
+
+// Gamification & Telemetry State
+let currentScore = 0;
+let currentStreak = 0;
+let maxStreak = 0;
+const sessionTelemetry = [];
+
+// Lifeline Inventory State
+let lifelinesRemaining = {
+    fiftyFifty: 1,
+    aiHint: 2,
+    freezeTimer: 1
+};
+
+// Fallback gamification configuration if not embedded in examConfig
+const activeGamification = (typeof examConfig !== 'undefined' && examConfig.gamification) ? examConfig.gamification : {
+    enabled: true,
+    scoring: {
+        basePointsPerCorrect: 100,
+        timeBonus: { enabled: true, maxBonusPoints: 50, speedBenchmarkSeconds: 15 },
+        streakMultiplier: { enabled: true, streakThreshold: 3, multiplierIncrement: 0.25, maxMultiplier: 2.5 }
+    },
+    lifelines: { fiftyFiftyCount: 1, aiHintCount: 2, freezeTimerCount: 1, freezeDurationSeconds: 30 },
+    ranks: [
+        { name: "Novice", minScore: 0, badge: "🌱" },
+        { name: "Scholar", minScore: 1200, badge: "⚡" },
+        { name: "Master", minScore: 2800, badge: "🔥" },
+        { name: "Grandmaster", minScore: 4500, badge: "👑" }
+    ]
+};
+
+// Initialize theme on window execution
+document.addEventListener("DOMContentLoaded", () => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    const modeBtn = document.getElementById('theme-switcher-btn');
+    if (modeBtn) modeBtn.innerText = "☀️ Light Mode";
+});
+
+/**
+ * Toggles the application theme state
+ */
+function toggleUIMode() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    
+    const modeBtn = document.getElementById('theme-switcher-btn');
+    if (modeBtn) {
+        modeBtn.innerText = newTheme === 'light' ? "🌙 Dark Mode" : "☀️ Light Mode";
+    }
+}
+
+/**
+ * Validates the student credentials, initializes gamification counters, and launches assessment
+ */
+function startExamEngine() {
+    const input = document.getElementById('username');
+    if (!input) return;
+    
+    const formatted = input.value.trim();
+    if (!formatted) {
+        alert("Access Denied: Please provide a valid username or verification handle to start.");
+        return;
+    }
+    
+    studentName = formatted;
+
+    // Initialize Lifeline counts from configuration
+    if (activeGamification && activeGamification.lifelines) {
+        lifelinesRemaining.fiftyFifty = activeGamification.lifelines.fiftyFiftyCount ?? 1;
+        lifelinesRemaining.aiHint = activeGamification.lifelines.aiHintCount ?? 2;
+        lifelinesRemaining.freezeTimer = activeGamification.lifelines.freezeTimerCount ?? 1;
+    }
+
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('exam-screen').classList.remove('hidden');
+    
+    injectGamificationHUD();
+    initializeClock(examConfig.timeLimitMinutes);
+    renderQuestionNode();
+}
+
+/**
+ * Injects HUD for dynamic score, streaks, audio read aloud, power-up lifelines, and early submission
+ */
+function injectGamificationHUD() {
+    const examScreen = document.getElementById('exam-screen');
+    const metaRow = examScreen.querySelector('.meta-row');
+    
+    // Prevent duplicate injection
+    if (document.getElementById('hud-gamification-bar')) return;
+
+    const hudContainer = document.createElement('div');
+    hudContainer.id = 'hud-gamification-bar';
+    hudContainer.style.cssText = "margin-bottom: 14px; padding: 10px; background: var(--background); border: 1px solid var(--border); border-radius: 6px;";
+
+    hudContainer.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px;">
+            <div>🏆 <strong>Score:</strong> <span id="hud-score-val" style="color:var(--primary); font-weight:700;">0</span></div>
+            <div>🔥 <strong>Streak:</strong> <span id="hud-streak-val" style="color:#f59e0b; font-weight:700;">0</span></div>
+            <div>🎖️ <strong>Rank:</strong> <span id="hud-rank-val">🌱 Novice</span></div>
+        </div>
+        <div id="lifeline-control-row" style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button id="btn-life-5050" class="btn btn-secondary" style="flex:1; margin:0; padding:6px 8px; font-size:12px;" onclick="activateFiftyFifty()">✂️ 50/50 (<span id="count-5050">${lifelinesRemaining.fiftyFifty}</span>)</button>
+            <button id="btn-life-hint" class="btn btn-secondary" style="flex:1; margin:0; padding:6px 8px; font-size:12px;" onclick="activateSocraticHint()">💡 Hint (<span id="count-hint">${lifelinesRemaining.aiHint}</span>)</button>
+            <button id="btn-life-freeze" class="btn btn-secondary" style="flex:1; margin:0; padding:6px 8px; font-size:12px;" onclick="activateFreezeTimer()">❄️ Freeze (<span id="count-freeze">${lifelinesRemaining.freezeTimer}</span>)</button>
+            <button id="btn-life-tts" class="btn btn-secondary" style="width:auto; margin:0; padding:6px 10px; font-size:12px;" onclick="readQuestionAloud()">🔊 Listen</button>
+            <button id="btn-end-exam" class="btn btn-secondary" style="background:#dc2626; color:white; width:auto; border:none; margin:0; padding:6px 10px; font-size:12px;" onclick="forceEndExam()">⏹️ Submit</button>
+        </div>
+        <div id="hint-display-box" class="hidden" style="margin-top:8px; padding:8px; background:rgba(37,99,235,0.15); border-left:3px solid var(--primary); font-size:12px; border-radius:4px;"></div>
+    `;
+
+    metaRow.parentNode.insertBefore(hudContainer, metaRow.nextSibling);
+}
+
+/**
+ * Runs countdown clock with support for freeze lifeline
+ */
+function initializeClock(minutes) {
+    secondsLeft = parseInt(minutes, 10) * 60;
+    const clockDisplay = document.getElementById('clock-display');
+    if (!clockDisplay) return;
+
+    countdownTimerInterval = setInterval(() => {
+        if (isTimerFrozen) return;
+
+        if (secondsLeft <= 0) {
+            clearInterval(countdownTimerInterval);
+            alert("Time has expired! Submitting your exam records automatically.");
+            terminateSession();
+            return;
+        }
+        secondsLeft--;
+        const min = Math.floor(secondsLeft / 60);
+        const sec = secondsLeft % 60;
+        clockDisplay.innerText = `⏱️ Time Left: ${min}:${sec < 10 ? '0' : ''}${sec}`;
+    }, 1000);
+}
+
+/**
+ * Renders the question item stem and interactive response variants
+ */
+function renderQuestionNode() {
+    if (currentQuestionIdx >= examQuestions.length) {
+        clearInterval(countdownTimerInterval);
+        terminateSession();
+        return;
+    }
+    
+    // Hide hint box from previous question
+    const hintBox = document.getElementById('hint-display-box');
+    if (hintBox) {
+        hintBox.classList.add('hidden');
+        hintBox.innerText = "";
+    }
+
+    const node = examQuestions[currentQuestionIdx];
+    document.getElementById('progress-text').innerText = `Question ${currentQuestionIdx + 1} of ${examQuestions.length}`;
+    document.getElementById('question-text').innerText = node.q;
+    
+    const container = document.getElementById('options-container');
+    container.innerHTML = "";
+    
+    node.options.forEach((optText, optIndex) => {
+        const btn = document.createElement('button');
+        btn.className = "btn option-btn";
+        btn.innerText = optText;
+        btn.setAttribute('data-opt-index', optIndex);
+        btn.onclick = () => processUserSelection(optIndex, btn);
+        container.appendChild(btn);
+    });
+    
+    questionStartTime = Date.now();
+}
+
+/**
+ * Processes selection logic, computes score with speed and streak multipliers, and records telemetry
+ */
+function processUserSelection(selectedIndex, clickedBtn) {
+    const elapsedSeconds = parseFloat(((Date.now() - questionStartTime) / 1000).toFixed(2));
+    const node = examQuestions[currentQuestionIdx];
+    const isCorrect = (selectedIndex === node.correct);
+    let pointsAwarded = 0;
+    
+    if (isCorrect) {
+        correctTally++;
+        currentStreak++;
+        if (currentStreak > maxStreak) maxStreak = currentStreak;
+
+        // Calculate Points
+        const basePoints = activeGamification.scoring?.basePointsPerCorrect ?? 100;
+        let streakMultiplier = 1.0;
+
+        if (activeGamification.scoring?.streakMultiplier?.enabled) {
+            const threshold = activeGamification.scoring.streakMultiplier.streakThreshold ?? 3;
+            const increment = activeGamification.scoring.streakMultiplier.multiplierIncrement ?? 0.25;
+            const maxMult = activeGamification.scoring.streakMultiplier.maxMultiplier ?? 2.5;
+
+            if (currentStreak >= threshold) {
+                streakMultiplier = Math.min(1.0 + ((currentStreak - threshold + 1) * increment), maxMult);
+            }
+        }
+
+        let timeBonus = 0;
+        if (activeGamification.scoring?.timeBonus?.enabled) {
+            const targetSec = activeGamification.scoring.timeBonus.speedBenchmarkSeconds ?? 15;
+            const maxBonus = activeGamification.scoring.timeBonus.maxBonusPoints ?? 50;
+            if (elapsedSeconds < targetSec) {
+                timeBonus = Math.round(((targetSec - elapsedSeconds) / targetSec) * maxBonus);
+            }
+        }
+
+        pointsAwarded = Math.round((basePoints * streakMultiplier) + timeBonus);
+        currentScore += pointsAwarded;
+    } else {
+        incorrectTally++;
+        currentStreak = 0;
+    }
+
+    updateHUDMetrics();
+
+    sessionTelemetry.push({
+        idx: currentQuestionIdx + 1,
+        question: node.q,
+        selected: node.options[selectedIndex],
+        status: isCorrect ? "Correct" : "Incorrect",
+        time: elapsedSeconds,
+        points: pointsAwarded,
+        difficulty: node.difficulty || "medium"
+    });
+
+    if (examConfig.showCorrectOnSubmit === "yes") {
+        const allButtons = document.getElementById('options-container').querySelectorAll('button');
+        allButtons.forEach((btn, index) => {
+            btn.onclick = null; 
+            if (index === node.correct) {
+                btn.classList.add('reveal-correct');
+            }
+        });
+        
+        if (!isCorrect) {
+            clickedBtn.classList.add('reveal-incorrect');
+        }
+
+        // Show brief explanation if available in schema
+        if (node.explanation) {
+            const hintBox = document.getElementById('hint-display-box');
+            if (hintBox) {
+                hintBox.classList.remove('hidden');
+                hintBox.innerHTML = `📘 <strong>Insight:</strong> ${node.explanation}`;
+            }
+        }
+        
+        setTimeout(() => {
+            currentQuestionIdx++;
+            renderQuestionNode();
+        }, 1800);
+    } else {
+        currentQuestionIdx++;
+        renderQuestionNode();
+    }
+}
+
+/**
+ * Updates dynamic HUD elements (Score, Streak, and Rank badge)
+ */
+function updateHUDMetrics() {
+    const scoreVal = document.getElementById('hud-score-val');
+    const streakVal = document.getElementById('hud-streak-val');
+    const rankVal = document.getElementById('hud-rank-val');
+
+    if (scoreVal) scoreVal.innerText = currentScore;
+    if (streakVal) streakVal.innerText = currentStreak;
+
+    if (rankVal && activeGamification.ranks) {
+        let currentRank = activeGamification.ranks[0];
+        activeGamification.ranks.forEach(r => {
+            if (currentScore >= r.minScore) {
+                currentRank = r;
+            }
+        });
+        rankVal.innerText = `${currentRank.badge} ${currentRank.name}`;
+    }
+}
+
+// ==========================================================================
+// LIFELINES & EXAM CONTROLS
+// ==========================================================================
+
+function activateFiftyFifty() {
+    if (lifelinesRemaining.fiftyFifty <= 0) return alert("No 50/50 power-ups remaining!");
+    
+    const node = examQuestions[currentQuestionIdx];
+    const optionButtons = Array.from(document.getElementById('options-container').querySelectorAll('button'));
+    
+    const incorrectButtons = optionButtons.filter((btn, idx) => idx !== node.correct && !btn.disabled);
+    if (incorrectButtons.length < 2) return;
+
+    incorrectButtons.sort(() => Math.random() - 0.5);
+    incorrectButtons.slice(0, 2).forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = "0.2";
+        btn.style.textDecoration = "line-through";
+        btn.style.cursor = "not-allowed";
+    });
+
+    lifelinesRemaining.fiftyFifty--;
+    document.getElementById('count-5050').innerText = lifelinesRemaining.fiftyFifty;
+    if (lifelinesRemaining.fiftyFifty === 0) document.getElementById('btn-life-5050').disabled = true;
+}
+
+function activateSocraticHint() {
+    if (lifelinesRemaining.aiHint <= 0) return alert("No Socratic Hints remaining!");
+
+    const node = examQuestions[currentQuestionIdx];
+    const hintBox = document.getElementById('hint-display-box');
+    if (!hintBox) return;
+
+    const hintText = node.hint || "Carefully analyze the keywords in the question stem and rule out options that are fundamentally mismatched.";
+    
+    hintBox.classList.remove('hidden');
+    hintBox.innerHTML = `💡 <strong>Socratic Hint:</strong> ${hintText}`;
+
+    lifelinesRemaining.aiHint--;
+    document.getElementById('count-hint').innerText = lifelinesRemaining.aiHint;
+    if (lifelinesRemaining.aiHint === 0) document.getElementById('btn-life-hint').disabled = true;
+}
+
+function activateFreezeTimer() {
+    if (lifelinesRemaining.freezeTimer <= 0) return alert("No Time Freeze power-ups remaining!");
+    if (isTimerFrozen) return;
+
+    const duration = activeGamification.lifelines?.freezeDurationSeconds ?? 30;
+    isTimerFrozen = true;
+
+    const clockDisplay = document.getElementById('clock-display');
+    clockDisplay.style.color = "#38bdf8";
+    clockDisplay.innerText = `❄️ FROZEN (${duration}s)`;
+
+    lifelinesRemaining.freezeTimer--;
+    document.getElementById('count-freeze').innerText = lifelinesRemaining.freezeTimer;
+    if (lifelinesRemaining.freezeTimer === 0) document.getElementById('btn-life-freeze').disabled = true;
+
+    freezeTimeoutId = setTimeout(() => {
+        isTimerFrozen = false;
+        clockDisplay.style.color = "var(--primary)";
+    }, duration * 1000);
+}
+
+function readQuestionAloud() {
+    if (!('speechSynthesis' in window)) {
+        return alert("Text-to-speech is not supported in this browser.");
+    }
+    
+    window.speechSynthesis.cancel();
+    const node = examQuestions[currentQuestionIdx];
+    const textToSpeak = `${node.q}. Option A: ${node.options[0]}. Option B: ${node.options[1]}. Option C: ${node.options[2]}. Option D: ${node.options[3]}.`;
+    
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = 0.95;
+    window.speechSynthesis.speak(utterance);
+}
+
+function forceEndExam() {
+    if (confirm("Are you sure you want to submit your exam early? Unanswered questions will not be scored.")) {
+        clearInterval(countdownTimerInterval);
+        terminateSession();
+    }
+}
+
+/**
+ * Displays summary evaluation totals and gamification metrics upon exam end
+ */
+function terminateSession() {
+    if (freezeTimeoutId) clearTimeout(freezeTimeoutId);
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+    document.getElementById('exam-screen').classList.add('hidden');
+    document.getElementById('result-screen').classList.remove('hidden');
+    
+    const ratio = incorrectTally === 0 ? correctTally : (correctTally / incorrectTally).toFixed(2);
+    
+    let earnedRank = { name: "Novice", badge: "🌱" };
+    if (activeGamification.ranks) {
+        activeGamification.ranks.forEach(r => {
+            if (currentScore >= r.minScore) earnedRank = r;
+        });
+    }
+
+    document.getElementById('stats-summary').innerHTML = `
+        <div style="background: var(--background); padding: 16px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 15px;">
+            <p style="margin: 4px 0;"><strong>Student:</strong> ${studentName}</p>
+            <p style="margin: 4px 0;"><strong>Final Accuracy:</strong> ${correctTally} / ${examQuestions.length}</p>
+            <p style="margin: 4px 0;"><strong>Correct-to-Incorrect Ratio:</strong> ${ratio}</p>
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 8px 0;">
+            <p style="margin: 4px 0; color:var(--primary);"><strong>Total Gamified Points:</strong> ${currentScore} XP</p>
+            <p style="margin: 4px 0;"><strong>Longest Streak:</strong> ${maxStreak} 🔥</p>
+            <p style="margin: 4px 0;"><strong>Standing Rank:</strong> ${earnedRank.badge} ${earnedRank.name}</p>
+        </div>
+        <p style="color: var(--text-muted); font-size: 14px; line-height: 1.5;">
+            Assessment records completed. Export your complete telemetry and performance logs using the button below.
+        </p>
+    `;
+}
+
+/**
+ * Flattens telemetry matrices including gamified scores and speeds out to CSV download format
+ */
+function downloadExamCSV() {
+    const ratio = incorrectTally === 0 ? correctTally : (correctTally / incorrectTally).toFixed(2);
+    const sanitizedStudentName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    
+    let csv = "data:text/csv;charset=utf-8,Student ID," + studentName + "\nScore," + correctTally + "/" + examQuestions.length + "\nPoints," + currentScore + "\nRatio," + ratio + "\n\nIndex,Question,Chosen Answer,Status,Difficulty,Points,Seconds Taken\n";
+    
+    sessionTelemetry.forEach(r => {
+        csv += `${r.idx},"${r.question.replace(/"/g, '""')}","${r.selected.replace(/"/g, '""')}",${r.status},${r.difficulty},${r.points},${r.time}\n`;
+    });
+    
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csv));
+    link.setAttribute("download", `ExamResults_${sanitizedStudentName}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+    </script>
 </body>
 </html>
