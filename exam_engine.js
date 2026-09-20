@@ -1,4 +1,4 @@
-// app.js - Enhanced Exam Runtime, Telemetry, Gamification & Lifeline Engine
+// app.js / exam_engine.js - Enhanced Exam Runtime, Telemetry, Gamification & LMS Engine
 
 let currentQuestionIdx = 0;
 let studentName = "";
@@ -10,11 +10,15 @@ let secondsLeft = 0;
 let isTimerFrozen = false;
 let freezeTimeoutId = null;
 
+let selectedOptionIndex = null;
+let hasSubmittedCurrentAnswer = false;
+
 // Gamification & Telemetry State
 let currentScore = 0;
 let currentStreak = 0;
 let maxStreak = 0;
 const sessionTelemetry = [];
+const incorrectQuestionsLog = [];
 
 // Lifeline Inventory State
 let lifelinesRemaining = {
@@ -23,7 +27,6 @@ let lifelinesRemaining = {
     freezeTimer: 1
 };
 
-// Fallback gamification configuration if not embedded in examConfig
 const activeGamification = (typeof examConfig !== 'undefined' && examConfig.gamification) ? examConfig.gamification : {
     enabled: true,
     scoring: {
@@ -40,44 +43,31 @@ const activeGamification = (typeof examConfig !== 'undefined' && examConfig.gami
     ]
 };
 
-// Initialize theme on window execution
 document.addEventListener("DOMContentLoaded", () => {
     document.documentElement.setAttribute('data-theme', 'dark');
     const modeBtn = document.getElementById('theme-switcher-btn');
     if (modeBtn) modeBtn.innerText = "☀️ Light Mode";
 });
 
-/**
- * Toggles the application theme state
- */
 function toggleUIMode() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    
     document.documentElement.setAttribute('data-theme', newTheme);
-    
     const modeBtn = document.getElementById('theme-switcher-btn');
-    if (modeBtn) {
-        modeBtn.innerText = newTheme === 'light' ? "🌙 Dark Mode" : "☀️ Light Mode";
-    }
+    if (modeBtn) modeBtn.innerText = newTheme === 'light' ? "🌙 Dark Mode" : "☀️ Light Mode";
 }
 
-/**
- * Validates the student credentials, initializes gamification counters, and launches assessment
- */
 function startExamEngine() {
     const input = document.getElementById('username');
     if (!input) return;
-    
     const formatted = input.value.trim();
     if (!formatted) {
-        alert("Access Denied: Please provide a valid username or verification handle to start.");
+        alert("Access Denied: Please provide a valid student identifier.");
         return;
     }
     
     studentName = formatted;
 
-    // Initialize Lifeline counts from configuration
     if (activeGamification && activeGamification.lifelines) {
         lifelinesRemaining.fiftyFifty = activeGamification.lifelines.fiftyFiftyCount ?? 1;
         lifelinesRemaining.aiHint = activeGamification.lifelines.aiHintCount ?? 2;
@@ -92,14 +82,9 @@ function startExamEngine() {
     renderQuestionNode();
 }
 
-/**
- * Injects HUD for dynamic score, streaks, audio read aloud, power-up lifelines, and early submission
- */
 function injectGamificationHUD() {
     const examScreen = document.getElementById('exam-screen');
     const metaRow = examScreen.querySelector('.meta-row');
-    
-    // Prevent duplicate injection
     if (document.getElementById('hud-gamification-bar')) return;
 
     const hudContainer = document.createElement('div');
@@ -125,9 +110,6 @@ function injectGamificationHUD() {
     metaRow.parentNode.insertBefore(hudContainer, metaRow.nextSibling);
 }
 
-/**
- * Runs countdown clock with support for freeze lifeline
- */
 function initializeClock(minutes) {
     secondsLeft = parseInt(minutes, 10) * 60;
     const clockDisplay = document.getElementById('clock-display');
@@ -135,10 +117,9 @@ function initializeClock(minutes) {
 
     countdownTimerInterval = setInterval(() => {
         if (isTimerFrozen) return;
-
         if (secondsLeft <= 0) {
             clearInterval(countdownTimerInterval);
-            alert("Time has expired! Submitting your exam records automatically.");
+            alert("Time expired! Submitting session records automatically.");
             terminateSession();
             return;
         }
@@ -149,9 +130,6 @@ function initializeClock(minutes) {
     }, 1000);
 }
 
-/**
- * Renders the question item stem and interactive response variants
- */
 function renderQuestionNode() {
     if (currentQuestionIdx >= examQuestions.length) {
         clearInterval(countdownTimerInterval);
@@ -159,7 +137,15 @@ function renderQuestionNode() {
         return;
     }
     
-    // Hide hint box from previous question
+    selectedOptionIndex = null;
+    hasSubmittedCurrentAnswer = false;
+    
+    const submitBtn = document.getElementById('btn-submit-answer');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Submit Answer";
+    }
+
     const hintBox = document.getElementById('hint-display-box');
     if (hintBox) {
         hintBox.classList.add('hidden');
@@ -178,20 +164,33 @@ function renderQuestionNode() {
         btn.className = "btn option-btn";
         btn.innerText = optText;
         btn.setAttribute('data-opt-index', optIndex);
-        btn.onclick = () => processUserSelection(optIndex, btn);
+        btn.onclick = () => selectOptionNode(optIndex, btn);
         container.appendChild(btn);
     });
     
     questionStartTime = Date.now();
 }
 
-/**
- * Processes selection logic, computes score with speed and streak multipliers, and records telemetry
- */
-function processUserSelection(selectedIndex, clickedBtn) {
+function selectOptionNode(optIndex, clickedBtn) {
+    if (hasSubmittedCurrentAnswer) return;
+    
+    selectedOptionIndex = optIndex;
+    const allButtons = document.getElementById('options-container').querySelectorAll('button');
+    allButtons.forEach(b => b.classList.remove('option-selected'));
+    
+    clickedBtn.classList.add('option-selected');
+    
+    const submitBtn = document.getElementById('btn-submit-answer');
+    if (submitBtn) submitBtn.disabled = false;
+}
+
+function commitStudentAnswer() {
+    if (selectedOptionIndex === null || hasSubmittedCurrentAnswer) return;
+    hasSubmittedCurrentAnswer = true;
+
     const elapsedSeconds = parseFloat(((Date.now() - questionStartTime) / 1000).toFixed(2));
     const node = examQuestions[currentQuestionIdx];
-    const isCorrect = (selectedIndex === node.correct);
+    const isCorrect = (selectedOptionIndex === node.correct);
     let pointsAwarded = 0;
     
     if (isCorrect) {
@@ -199,7 +198,6 @@ function processUserSelection(selectedIndex, clickedBtn) {
         currentStreak++;
         if (currentStreak > maxStreak) maxStreak = currentStreak;
 
-        // Calculate Points
         const basePoints = activeGamification.scoring?.basePointsPerCorrect ?? 100;
         let streakMultiplier = 1.0;
 
@@ -207,7 +205,6 @@ function processUserSelection(selectedIndex, clickedBtn) {
             const threshold = activeGamification.scoring.streakMultiplier.streakThreshold ?? 3;
             const increment = activeGamification.scoring.streakMultiplier.multiplierIncrement ?? 0.25;
             const maxMult = activeGamification.scoring.streakMultiplier.maxMultiplier ?? 2.5;
-
             if (currentStreak >= threshold) {
                 streakMultiplier = Math.min(1.0 + ((currentStreak - threshold + 1) * increment), maxMult);
             }
@@ -227,6 +224,7 @@ function processUserSelection(selectedIndex, clickedBtn) {
     } else {
         incorrectTally++;
         currentStreak = 0;
+        incorrectQuestionsLog.push(node);
     }
 
     updateHUDMetrics();
@@ -234,48 +232,44 @@ function processUserSelection(selectedIndex, clickedBtn) {
     sessionTelemetry.push({
         idx: currentQuestionIdx + 1,
         question: node.q,
-        selected: node.options[selectedIndex],
+        selected: node.options[selectedOptionIndex],
         status: isCorrect ? "Correct" : "Incorrect",
         time: elapsedSeconds,
         points: pointsAwarded,
         difficulty: node.difficulty || "medium"
     });
 
-    if (examConfig.showCorrectOnSubmit === "yes") {
-        const allButtons = document.getElementById('options-container').querySelectorAll('button');
-        allButtons.forEach((btn, index) => {
-            btn.onclick = null; // Prevent subsequent clicks
-            if (index === node.correct) {
-                btn.classList.add('reveal-correct');
-            }
-        });
-        
-        if (!isCorrect) {
-            clickedBtn.classList.add('reveal-incorrect');
+    const allButtons = document.getElementById('options-container').querySelectorAll('button');
+    allButtons.forEach((btn, index) => {
+        btn.onclick = null;
+        if (index === node.correct) {
+            btn.classList.add('reveal-correct');
         }
+    });
 
-        // Show brief explanation if available in schema
-        if (node.explanation) {
-            const hintBox = document.getElementById('hint-display-box');
-            if (hintBox) {
-                hintBox.classList.remove('hidden');
-                hintBox.innerHTML = `📘 <strong>Insight:</strong> ${node.explanation}`;
-            }
-        }
-        
-        setTimeout(() => {
-            currentQuestionIdx++;
-            renderQuestionNode();
-        }, 1800);
-    } else {
-        currentQuestionIdx++;
-        renderQuestionNode();
+    if (!isCorrect) {
+        const selectedBtn = document.querySelector(`[data-opt-index="${selectedOptionIndex}"]`);
+        if (selectedBtn) selectedBtn.classList.add('reveal-incorrect');
     }
+
+    if (node.explanation) {
+        const hintBox = document.getElementById('hint-display-box');
+        if (hintBox) {
+            hintBox.classList.remove('hidden');
+            hintBox.innerHTML = `📘 <strong>Explanation:</strong> ${node.explanation}`;
+        }
+    }
+
+    const submitBtn = document.getElementById('btn-submit-answer');
+    if (submitBtn) submitBtn.innerText = "Next Question →";
+    submitBtn.onclick = () => {
+        currentQuestionIdx++;
+        submitBtn.innerText = "Submit Answer";
+        submitBtn.onclick = commitStudentAnswer;
+        renderQuestionNode();
+    };
 }
 
-/**
- * Updates dynamic HUD elements (Score, Streak, and Rank badge)
- */
 function updateHUDMetrics() {
     const scoreVal = document.getElementById('hud-score-val');
     const streakVal = document.getElementById('hud-streak-val');
@@ -287,21 +281,18 @@ function updateHUDMetrics() {
     if (rankVal && activeGamification.ranks) {
         let currentRank = activeGamification.ranks[0];
         activeGamification.ranks.forEach(r => {
-            if (currentScore >= r.minScore) {
-                currentRank = r;
-            }
+            if (currentScore >= r.minScore) currentRank = r;
         });
         rankVal.innerText = `${currentRank.badge} ${currentRank.name}`;
     }
 }
 
-// ==========================================================================
+// ==========================================
 // LIFELINES & EXAM CONTROLS
-// ==========================================================================
+// ==========================================
 
 function activateFiftyFifty() {
     if (lifelinesRemaining.fiftyFifty <= 0) return alert("No 50/50 power-ups remaining!");
-    
     const node = examQuestions[currentQuestionIdx];
     const optionButtons = Array.from(document.getElementById('options-container').querySelectorAll('button'));
     
@@ -323,13 +314,11 @@ function activateFiftyFifty() {
 
 function activateSocraticHint() {
     if (lifelinesRemaining.aiHint <= 0) return alert("No Socratic Hints remaining!");
-
     const node = examQuestions[currentQuestionIdx];
     const hintBox = document.getElementById('hint-display-box');
     if (!hintBox) return;
 
-    const hintText = node.hint || "Carefully analyze the keywords in the question stem and rule out options that are fundamentally mismatched.";
-    
+    const hintText = node.hint || "Analyze the question keywords carefully.";
     hintBox.classList.remove('hidden');
     hintBox.innerHTML = `💡 <strong>Socratic Hint:</strong> ${hintText}`;
 
@@ -344,7 +333,6 @@ function activateFreezeTimer() {
 
     const duration = activeGamification.lifelines?.freezeDurationSeconds ?? 30;
     isTimerFrozen = true;
-
     const clockDisplay = document.getElementById('clock-display');
     clockDisplay.style.color = "#38bdf8";
     clockDisplay.innerText = `❄️ FROZEN (${duration}s)`;
@@ -360,30 +348,25 @@ function activateFreezeTimer() {
 }
 
 function readQuestionAloud() {
-    if (!('speechSynthesis' in window)) {
-        return alert("Text-to-speech is not supported in this browser.");
-    }
-    
+    if (!('speechSynthesis' in window)) return alert("Text-to-speech not supported.");
     window.speechSynthesis.cancel();
     const node = examQuestions[currentQuestionIdx];
-    const textToSpeak = `${node.q}. Option A: ${node.options[0]}. Option B: ${node.options[1]}. Option C: ${node.options[2]}. Option D: ${node.options[3]}.`;
-    
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.rate = 0.95;
+    const utterance = new SpeechSynthesisUtterance(`${node.q}. Options: ${node.options.join(', ')}`);
     window.speechSynthesis.speak(utterance);
 }
 
 function forceEndExam() {
-    if (confirm("Are you sure you want to submit your exam early? Unanswered questions will not be scored.")) {
+    if (confirm("Are you sure you want to submit your exam early?")) {
         clearInterval(countdownTimerInterval);
         terminateSession();
     }
 }
 
-/**
- * Displays summary evaluation totals and gamification metrics upon exam end
- */
-function terminateSession() {
+// ==========================================
+// SESSION TERMINATION & CLOUD SYNCING
+// ==========================================
+
+async function terminateSession() {
     if (freezeTimeoutId) clearTimeout(freezeTimeoutId);
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
@@ -391,7 +374,6 @@ function terminateSession() {
     document.getElementById('result-screen').classList.remove('hidden');
     
     const ratio = incorrectTally === 0 ? correctTally : (correctTally / incorrectTally).toFixed(2);
-    
     let earnedRank = { name: "Novice", badge: "🌱" };
     if (activeGamification.ranks) {
         activeGamification.ranks.forEach(r => {
@@ -399,40 +381,150 @@ function terminateSession() {
         });
     }
 
+    const payload = {
+        uniqueExamId: examConfig.uniqueExamId,
+        studentId: studentName,
+        subject: examConfig.subject,
+        topic: examConfig.topic,
+        grade: examConfig.grade,
+        difficulty: examConfig.difficulty,
+        score: correctTally,
+        total: examQuestions.length,
+        points: currentScore,
+        ratio: ratio,
+        timestamp: new Date().toISOString(),
+        telemetry: sessionTelemetry
+    };
+
     document.getElementById('stats-summary').innerHTML = `
         <div style="background: var(--background); padding: 16px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 15px;">
             <p style="margin: 4px 0;"><strong>Student:</strong> ${studentName}</p>
             <p style="margin: 4px 0;"><strong>Final Accuracy:</strong> ${correctTally} / ${examQuestions.length}</p>
             <p style="margin: 4px 0;"><strong>Correct-to-Incorrect Ratio:</strong> ${ratio}</p>
             <hr style="border: 0; border-top: 1px solid var(--border); margin: 8px 0;">
-            <p style="margin: 4px 0; color:var(--primary);"><strong>Total Gamified Points:</strong> ${currentScore} XP</p>
+            <p style="margin: 4px 0; color:var(--primary);"><strong>Total Points:</strong> ${currentScore} XP</p>
             <p style="margin: 4px 0;"><strong>Longest Streak:</strong> ${maxStreak} 🔥</p>
-            <p style="margin: 4px 0;"><strong>Standing Rank:</strong> ${earnedRank.badge} ${earnedRank.name}</p>
+            <p style="margin: 4px 0;"><strong>Rank:</strong> ${earnedRank.badge} ${earnedRank.name}</p>
         </div>
-        <p style="color: var(--text-muted); font-size: 14px; line-height: 1.5;">
-            Assessment records completed. Export your complete telemetry and performance logs using the button below.
-        </p>
     `;
+
+    // Sync telemetry to Master Analytics Gist automatically
+    if (examConfig.masterAnalyticsGistId && examConfig.githubPat) {
+        await syncTelemetryToCloudGist(payload);
+    }
 }
 
-/**
- * Flattens telemetry matrices including gamified scores and speeds out to CSV download format
- */
-function downloadExamCSV() {
-    const ratio = incorrectTally === 0 ? correctTally : (correctTally / incorrectTally).toFixed(2);
-    const sanitizedStudentName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+async function syncTelemetryToCloudGist(payload) {
+    try {
+        const res = await fetch(`https://api.github.com/gists/${examConfig.masterAnalyticsGistId}`, {
+            headers: { 'Authorization': `Bearer ${examConfig.githubPat}`, 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const fileContent = data.files['student_telemetry.json']?.content || "[]";
+            let records = [];
+            try { records = JSON.parse(fileContent); } catch(e){}
+            records.push(payload);
+
+            await fetch(`https://api.github.com/gists/${examConfig.masterAnalyticsGistId}`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${examConfig.githubPat}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+                body: JSON.stringify({
+                    files: { 'student_telemetry.json': { content: JSON.stringify(records, null, 2) } }
+                })
+            });
+        }
+    } catch (e) {
+        console.warn("Could not sync telemetry to Gist:", e);
+    }
+}
+
+function triggerReportModal() {
+    document.getElementById('report-modal').classList.remove('hidden');
+}
+
+async function submitQuestionReport(token, repo) {
+    const reason = document.getElementById('report-reason-input').value.trim();
+    if (!reason) return alert("Please provide a brief reason for the report.");
+    if (!token || !repo) return alert("GitHub repository credentials missing.");
+
+    const node = examQuestions[currentQuestionIdx] || examQuestions[0];
+    const issueTitle = `[Reported Q] ${examConfig.subject} - ${examConfig.topic}`;
+    const issueBody = `Question: "${node.q}"\nReason: ${reason}\nStudent: ${studentName}\nExam ID: ${examConfig.uniqueExamId}`;
+
+    try {
+        const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+            body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ['question-error'] })
+        });
+
+        if (res.ok) {
+            alert("Thank you! Your report has been submitted as a GitHub Issue to improve future AI generations.");
+            document.getElementById('report-modal').classList.add('hidden');
+            document.getElementById('report-reason-input').value = "";
+        } else {
+            throw new Error("GitHub API error.");
+        }
+    } catch (e) {
+        alert("Failed to submit issue: " + e.message);
+    }
+}
+
+function generateRemediationTestFromIncorrect() {
+    if (incorrectQuestionsLog.length === 0) return alert("No incorrect questions recorded in this session. Great job!");
     
-    let csv = "data:text/csv;charset=utf-8,Student ID," + studentName + "\nScore," + correctTally + "/" + examQuestions.length + "\nPoints," + currentScore + "\nRatio," + ratio + "\n\nIndex,Question,Chosen Answer,Status,Difficulty,Points,Seconds Taken\n";
-    
-    sessionTelemetry.forEach(r => {
-        csv += `${r.idx},"${r.question.replace(/"/g, '""')}","${r.selected.replace(/"/g, '""')}",${r.status},${r.difficulty},${r.points},${r.time}\n`;
-    });
-    
-    const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csv));
-    link.setAttribute("download", `ExamResults_${sanitizedStudentName}.csv`);
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const remediationHtml = assembleRemediationHtml(incorrectQuestionsLog);
+    const blob = new Blob([remediationHtml], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `remediation_${examConfig.topic.toLowerCase().replace(/\s+/g, '_')}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function assembleRemediationHtml(incorrectList) {
+    return `<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="UTF-8"><title>Remediation Review: ${examConfig.subject}</title></head>
+<body style="font-family:sans-serif; background:#000; color:#fff; padding:40px;">
+    <h2>🔄 Remediation Review Test</h2>
+    <p>Targeted review of questions missed by ${studentName} in ${examConfig.subject} (${examConfig.topic}).</p>
+    <hr style="border-color:#333; margin:20px 0;">
+    ${incorrectList.map((item, idx) => `
+        <div style="margin-bottom:20px; padding:15px; border:1px solid #333; border-radius:6px; background:#121212;">
+            <p><strong>Q${idx+1}:${item.q}</strong></p>
+            <p style="color:#22c55e;"><strong>Correct Answer:</strong> ${item.options[item.correct]}</p>
+            <p style="color:#9ca3af; font-size:13px;"><strong>Explanation:</strong> ${item.explanation || "Review fundamental principles."}</p>
+        </div>
+    `).join('')}
+</body>
+</html>`;
+}
+
+function downloadExamJSON() {
+    const payload = {
+        uniqueExamId: examConfig.uniqueExamId,
+        studentId: studentName,
+        subject: examConfig.subject,
+        topic: examConfig.topic,
+        grade: examConfig.grade,
+        difficulty: examConfig.difficulty,
+        score: correctTally,
+        total: examQuestions.length,
+        points: currentScore,
+        telemetry: sessionTelemetry
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ExamPerformance_${studentName}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }

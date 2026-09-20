@@ -13,6 +13,7 @@ html[data-theme="dark"],
     --primary-hover: #2563eb;
     --success: #22c55e;
     --error: #ef4444;
+    --warning: #f59e0b;
     --background: #000000;   
     --surface: #121212;      
     --text-main: #f8fafc;    
@@ -28,6 +29,7 @@ html[data-theme="light"],
     --primary-hover: #1d4ed8;
     --success: #16a34a;
     --error: #dc2626;
+    --warning: #d97706;
     --background: #f1f5f9;   
     --surface: #ffffff;      
     --text-main: #0f172a;    
@@ -237,7 +239,7 @@ input:focus, select:focus, textarea:focus {
 .reveal-btn:hover { color: var(--text-main); }
 
 /* ==========================================================================
-   5. MULTI-SELECT DROPDOWN
+   5. MULTI-SELECT DROPDOWN & TABS
    ========================================================================== */
 .multiselect-box { position: relative; width: 100%; }
 
@@ -295,6 +297,30 @@ input:focus, select:focus, textarea:focus {
     margin: 0; cursor: pointer; width: 16px; height: 16px;
 }
 
+.admin-tab-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+}
+.admin-tab-btn {
+    background: var(--background);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.admin-tab-btn.active {
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+}
+
 /* ==========================================================================
    6. RANGE SLIDERS
    ========================================================================== */
@@ -335,7 +361,7 @@ input[type="range"]::-moz-range-thumb {
 input[type="range"]::-moz-range-thumb:hover { transform: scale(1.15); }
 
 /* ==========================================================================
-   7. BUTTON SYSTEM
+   7. BUTTON SYSTEM & EXAM INTERACTION STATES
    ========================================================================== */
 .btn {
     display: block;
@@ -392,6 +418,13 @@ input[type="range"]::-moz-range-thumb:hover { transform: scale(1.15); }
     border-color: var(--text-muted);
 }
 
+/* User selected option before hitting "Submit Answer" */
+.option-selected {
+    border-color: var(--primary) !important;
+    background-color: rgba(59, 130, 246, 0.12) !important;
+    font-weight: 600;
+}
+
 .reveal-correct { 
     background-color: #064e3b !important;
     border-color: var(--success) !important;
@@ -405,7 +438,7 @@ input[type="range"]::-moz-range-thumb:hover { transform: scale(1.15); }
 }
 
 /* ==========================================================================
-   8. PREVIEW, METRICS DASHBOARD & STATUS UTILITIES
+   8. PREVIEW, METRICS DASHBOARD, MODALS & STATUS UTILITIES
    ========================================================================== */
 #llm-metrics-card { transition: background-color 0.2s ease, border-color 0.2s ease; }
 #hud-gamification-bar { transition: background-color 0.2s ease, border-color 0.2s ease; }
@@ -428,8 +461,21 @@ input[type="range"]::-moz-range-thumb:hover { transform: scale(1.15); }
     align-items: flex-start;
 }
 .preview-item:last-child { border-bottom: none; }
-
 .preview-item input[type="checkbox"] { margin-top: 2px; cursor: pointer; width: 18px; height: 18px; }
+
+/* Modal styles for Report Question */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
 
 #deployment-success-banner { animation: fadeInSlide 0.25s ease-out; }
 
