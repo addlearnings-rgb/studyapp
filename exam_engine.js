@@ -1,4 +1,4 @@
-window.APP_BUNDLE = `// app.js / exam_engine.js - Enhanced Exam Runtime, Gamification & HUD Engine
+// exam_engine.js - Enhanced Exam Runtime, Gamification & HUD Engine
 
 let currentQuestionIdx = 0;
 let studentName = "";
@@ -49,25 +49,19 @@ function startExamEngine() {
     
     studentName = formatted;
 
-    // THE BUG FIX: Unhide the parent layout wrapper AND the progress bar!
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('exam-layout').classList.remove('hidden');
     document.getElementById('progress-bar-container').classList.remove('hidden');
     document.getElementById('profile-btn').classList.remove('hidden');
+    document.getElementById('top-rank-display').classList.remove('hidden');
 
     initializeClock(examConfig.timeLimitMinutes);
     renderQuestionNode();
-    fetchGlobalStudentProfile(); // Trigger background sync for the Avatar Modal
+    fetchGlobalStudentProfile(); 
 }
 
-// ==========================================
-// KEYBOARD SHORTCUTS
-// ==========================================
 document.addEventListener('keydown', (e) => {
-    // Only listen if exam is active
     if (document.getElementById('exam-layout').classList.contains('hidden')) return;
-    
-    // If answer already submitted, Enter moves to next question
     if (hasSubmittedCurrentAnswer) {
         if (e.key === 'Enter') {
             const btn = document.getElementById('btn-submit-answer');
@@ -75,24 +69,17 @@ document.addEventListener('keydown', (e) => {
         }
         return;
     }
-
-    // Number keys 1-4 for option selection
     if (['1', '2', '3', '4'].includes(e.key)) {
         const idx = parseInt(e.key) - 1;
         const optionBtns = document.querySelectorAll('.option-btn');
         if (optionBtns[idx] && !optionBtns[idx].disabled) {
             optionBtns[idx].click();
         }
-    } 
-    // Enter to submit selected answer
-    else if (e.key === 'Enter' && selectedOptionIndex !== null) {
+    } else if (e.key === 'Enter' && selectedOptionIndex !== null) {
         commitStudentAnswer();
     }
 });
 
-// ==========================================
-// EXAM RUNTIME ENGINE
-// ==========================================
 function initializeClock(minutes) {
     secondsLeft = parseInt(minutes, 10) * 60;
     const clockDisplay = document.getElementById('clock-display');
@@ -109,9 +96,8 @@ function initializeClock(minutes) {
         secondsLeft--;
         const min = Math.floor(secondsLeft / 60);
         const sec = secondsLeft % 60;
-        clockDisplay.innerText = \`\${min}:\${sec < 10 ? '0' : ''}\${sec}\`;
+        clockDisplay.innerText = `${min}:${sec < 10 ? '0' : ''}${sec}`;
 
-        // Pulse red if under 60 seconds
         if (secondsLeft < 60) {
             timerBox.style.borderColor = "var(--error)";
             clockDisplay.style.color = "var(--error)";
@@ -137,12 +123,11 @@ function renderQuestionNode() {
     document.getElementById('hint-display-box').innerHTML = "";
 
     const node = examQuestions[currentQuestionIdx];
-    document.getElementById('progress-text').innerText = \`Question \${currentQuestionIdx + 1} of \${examQuestions.length}\`;
+    document.getElementById('progress-text').innerText = `Question ${currentQuestionIdx + 1} of ${examQuestions.length}`;
     document.getElementById('question-text').innerText = node.q;
     
-    // Update Top Progress Bar Width
     const progressPct = (currentQuestionIdx / examQuestions.length) * 100;
-    document.getElementById('progress-bar-fill').style.width = \`\${progressPct}%\`;
+    document.getElementById('progress-bar-fill').style.width = `${progressPct}%`;
     
     const container = document.getElementById('options-container');
     container.innerHTML = "";
@@ -150,8 +135,7 @@ function renderQuestionNode() {
     node.options.forEach((optText, optIndex) => {
         const btn = document.createElement('button');
         btn.className = "option-btn";
-        // Prefix with number for keyboard shortcut awareness
-        btn.innerHTML = \`<strong style="color:var(--primary); margin-right:8px;">\${optIndex + 1}.</strong> \${optText}\`;
+        btn.innerHTML = `<strong style="color:var(--primary); margin-right:8px;">${optIndex + 1}.</strong> ${optText}`;
         btn.setAttribute('data-opt-index', optIndex);
         btn.onclick = () => selectOptionNode(optIndex, btn);
         container.appendChild(btn);
@@ -215,7 +199,6 @@ function commitStudentAnswer() {
         difficulty: node.difficulty || "medium"
     });
 
-    // Reveal Correct/Incorrect States
     document.querySelectorAll('.option-btn').forEach((btn, index) => {
         btn.disabled = true;
         if (index === node.correct) {
@@ -225,11 +208,10 @@ function commitStudentAnswer() {
         }
     });
 
-    // Inline Explanation Slide-in
     if (node.explanation) {
         const hintBox = document.getElementById('hint-display-box');
         hintBox.classList.remove('hidden');
-        hintBox.innerHTML = \`📘 <strong>Explanation:</strong> \${node.explanation}\`;
+        hintBox.innerHTML = `📘 <strong>Explanation:</strong> ${node.explanation}`;
     }
 
     const submitBtn = document.getElementById('btn-submit-answer');
@@ -243,18 +225,15 @@ function commitStudentAnswer() {
 
 function updateHUDMetrics() {
     document.getElementById('hud-score-val').innerText = currentScore;
-    document.getElementById('hud-streak-val').innerText = \`\${currentStreak}🔥\`;
+    document.getElementById('hud-streak-val').innerText = `${currentStreak}🔥`;
 
     let currentRank = activeGamification.ranks[0];
     activeGamification.ranks.forEach(r => {
         if (currentScore >= r.minScore) currentRank = r;
     });
-    document.getElementById('hud-rank-val').innerText = \`\${currentRank.badge} \${currentRank.name}\`;
+    document.getElementById('hud-rank-val').innerText = `${currentRank.badge} ${currentRank.name}`;
 }
 
-// ==========================================
-// LIFELINES
-// ==========================================
 function activateFiftyFifty() {
     let span = document.getElementById('count-5050');
     let count = parseInt(span.innerText);
@@ -283,7 +262,7 @@ function activateSocraticHint() {
 
     const hintBox = document.getElementById('hint-display-box');
     hintBox.classList.remove('hidden');
-    hintBox.innerHTML = \`💡 <strong>Hint:</strong> \${examQuestions[currentQuestionIdx].hint || "Analyze the keywords carefully."}\`;
+    hintBox.innerHTML = `💡 <strong>Hint:</strong> ${examQuestions[currentQuestionIdx].hint || "Analyze the keywords carefully."}`;
 
     span.innerText = count - 1;
     if (count - 1 === 0) document.getElementById('btn-life-hint').disabled = true;
@@ -310,7 +289,7 @@ function readQuestionAloud() {
     if (!('speechSynthesis' in window)) return alert("Text-to-speech not supported.");
     window.speechSynthesis.cancel();
     const node = examQuestions[currentQuestionIdx];
-    const utterance = new SpeechSynthesisUtterance(\`\${node.q}. Options: \${node.options.join(', ')}\`);
+    const utterance = new SpeechSynthesisUtterance(`${node.q}. Options: ${node.options.join(', ')}`);
     window.speechSynthesis.speak(utterance);
 }
 
@@ -321,9 +300,6 @@ function forceEndExam() {
     }
 }
 
-// ==========================================
-// END EXAM & STUDENT PROFILE CLOUD SYNC
-// ==========================================
 async function terminateSession() {
     if (freezeTimeoutId) clearTimeout(freezeTimeoutId);
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
@@ -346,28 +322,27 @@ async function terminateSession() {
         timestamp: new Date().toISOString()
     };
 
-    document.getElementById('stats-summary').innerHTML = \`
+    document.getElementById('stats-summary').innerHTML = `
         <div style="background: var(--surface); padding: 24px; border: 1px solid var(--border); border-radius: 12px;">
-            <h3 style="margin-bottom:16px;">Mission Accomplished, \${studentName}!</h3>
+            <h3 style="margin-bottom:16px;">Mission Accomplished, ${studentName}!</h3>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
                 <div style="background:var(--background); padding:12px; border-radius:8px;">
                     <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase;">Accuracy</div>
-                    <div style="font-size:24px; font-weight:700; color:var(--success);">\${correctTally}/\${examQuestions.length}</div>
+                    <div style="font-size:24px; font-weight:700; color:var(--success);">${correctTally}/${examQuestions.length}</div>
                 </div>
                 <div style="background:var(--background); padding:12px; border-radius:8px;">
                     <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase;">Total XP Earned</div>
-                    <div style="font-size:24px; font-weight:700; color:var(--primary);">\${currentScore}</div>
+                    <div style="font-size:24px; font-weight:700; color:var(--primary);">${currentScore}</div>
                 </div>
             </div>
         </div>
-    \`;
+    `;
 
-    // Push new results to Cloud Gist
     if (examConfig.masterAnalyticsGistId && examConfig.obfuscatedPat) {
         try {
             const token = atob(examConfig.obfuscatedPat);
-            const res = await fetch(\`https://api.github.com/gists/\${examConfig.masterAnalyticsGistId}\`, {
-                headers: { 'Authorization': \`Bearer \${token}\`, 'Accept': 'application/vnd.github.v3+json' }
+            const res = await fetch(`https://api.github.com/gists/${examConfig.masterAnalyticsGistId}`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -375,9 +350,9 @@ async function terminateSession() {
                 let records = [];
                 try { records = JSON.parse(fileContent); } catch(e){}
                 records.push(payload);
-                await fetch(\`https://api.github.com/gists/\${examConfig.masterAnalyticsGistId}\`, {
+                await fetch(`https://api.github.com/gists/${examConfig.masterAnalyticsGistId}`, {
                     method: 'PATCH',
-                    headers: { 'Authorization': \`Bearer \${token}\`, 'Content-Type': 'application/json' },
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ files: { 'student_telemetry.json': { content: JSON.stringify(records, null, 2) } } })
                 });
             }
@@ -394,13 +369,13 @@ async function submitQuestionReport() {
 
     const token = atob(examConfig.obfuscatedPat);
     const node = examQuestions[currentQuestionIdx] || examQuestions[0];
-    const issueTitle = \`[Reported Q] \${examConfig.subject} - \${examConfig.topic}\`;
-    const issueBody = \`Question: "\${node.q}"\\nReason: \${reason}\\nStudent: \${studentName}\\nExam ID: \${examConfig.uniqueExamId}\`;
+    const issueTitle = `[Reported Q] ${examConfig.subject} - ${examConfig.topic}`;
+    const issueBody = `Question: "${node.q}"\nReason: ${reason}\nStudent: ${studentName}\nExam ID: ${examConfig.uniqueExamId}`;
 
     try {
-        const res = await fetch(\`https://api.github.com/repos/\${examConfig.githubRepo}/issues\`, {
+        const res = await fetch(`https://api.github.com/repos/${examConfig.githubRepo}/issues`, {
             method: 'POST',
-            headers: { 'Authorization': \`Bearer \${token}\`, 'Content-Type': 'application/json' },
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ['question-error'] })
         });
         if (res.ok) {
@@ -414,30 +389,26 @@ async function submitQuestionReport() {
 function downloadExamJSON() {
     const blob = new Blob([JSON.stringify(sessionTelemetry, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = \`ExamPerformance.json\`;
+    const a = document.createElement('a'); a.href = url; a.download = `ExamPerformance.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
-// ==========================================
-// GLOBAL STUDENT PROFILE SYNC
-// ==========================================
 async function fetchGlobalStudentProfile() {
     if (!examConfig.masterAnalyticsGistId || !examConfig.obfuscatedPat) return;
     try {
         const token = atob(examConfig.obfuscatedPat);
-        const res = await fetch(\`https://api.github.com/gists/\${examConfig.masterAnalyticsGistId}\`, {
-            headers: { 'Authorization': \`Bearer \${token}\`, 'Accept': 'application/vnd.github.v3+json' }
+        const res = await fetch(`https://api.github.com/gists/${examConfig.masterAnalyticsGistId}`, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }
         });
         if (res.ok) {
             const data = await res.json();
             const telemetryStr = data.files['student_telemetry.json']?.content || "[]";
             const allRecords = JSON.parse(telemetryStr);
             
-            // Filter telemetry dynamically for whoever just logged in!
             const myRecords = allRecords.filter(r => r.studentId.toLowerCase() === studentName.toLowerCase());
             
             if (myRecords.length === 0) {
-                document.getElementById('profile-content-area').innerHTML = \`<p style="color:var(--text-muted); text-align:center; padding-top:40px;">No previous records found for <strong>\${studentName}</strong>.</p>\`;
+                document.getElementById('profile-content-area').innerHTML = `<p style="color:var(--text-muted); text-align:center; padding-top:40px;">No previous records found for <strong>${studentName}</strong>.</p>`;
                 return;
             }
 
@@ -461,39 +432,39 @@ async function fetchGlobalStudentProfile() {
             let globalRank = activeGamification.ranks[0];
             activeGamification.ranks.forEach(r => { if (totalXp >= r.minScore) globalRank = r; });
 
-            let html = \`
+            let html = `
                 <div style="display:flex; align-items:center; gap:16px; margin-bottom:24px;">
-                    <div style="font-size:48px;">\${globalRank.badge}</div>
+                    <div style="font-size:48px;">${globalRank.badge}</div>
                     <div>
-                        <h2 style="margin:0; font-size:24px;">\${studentName}</h2>
-                        <p style="margin:0; color:var(--primary); font-weight:600;">\${globalRank.name} • \${totalXp.toLocaleString()} Lifetime XP</p>
+                        <h2 style="margin:0; font-size:24px;">${studentName}</h2>
+                        <p style="margin:0; color:var(--primary); font-weight:600;">${globalRank.name} • ${totalXp.toLocaleString()} Lifetime XP</p>
                     </div>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:24px;">
                     <div style="background:var(--background); padding:16px; border-radius:8px; border:1px solid var(--border);">
                         <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Global Accuracy</div>
-                        <div style="font-size:24px; font-weight:700;">\${globalAccuracy}%</div>
+                        <div style="font-size:24px; font-weight:700;">${globalAccuracy}%</div>
                     </div>
                     <div style="background:var(--background); padding:16px; border-radius:8px; border:1px solid var(--border);">
                         <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Exams Completed</div>
-                        <div style="font-size:24px; font-weight:700;">\${myRecords.length}</div>
+                        <div style="font-size:24px; font-weight:700;">${myRecords.length}</div>
                     </div>
                 </div>
                 <h4 style="margin-bottom:12px;">Subject Mastery</h4>
                 <div style="display:flex; flex-direction:column; gap:8px; max-height:200px; overflow-y:auto;">
-            \`;
+            `;
 
             for (const [subj, data] of Object.entries(subjects)) {
                 const acc = Math.round((data.score / data.total) * 100);
-                html += \`
+                html += `
                     <div style="display:flex; justify-content:space-between; padding:12px; background:var(--background); border-radius:6px; border:1px solid var(--border);">
-                        <div><strong>\${subj}</strong> <span style="color:var(--text-muted); font-size:12px;">(\${data.exams} exams)</span></div>
-                        <div style="font-weight:600; color:\${acc >= 70 ? 'var(--success)' : 'var(--warning)'}">\${acc}% Acc</div>
+                        <div><strong>${subj}</strong> <span style="color:var(--text-muted); font-size:12px;">(${data.exams} exams)</span></div>
+                        <div style="font-weight:600; color:${acc >= 70 ? 'var(--success)' : 'var(--warning)'}">${acc}% Acc</div>
                     </div>
-                \`;
+                `;
             }
 
-            html += \`</div>\`;
+            html += `</div>`;
             document.getElementById('profile-content-area').innerHTML = html;
         }
     } catch (e) { console.warn("Failed to fetch student profile."); }
@@ -502,4 +473,3 @@ async function fetchGlobalStudentProfile() {
 function openStudentProfile() {
     document.getElementById('profile-modal').classList.remove('hidden');
 }
-`;
