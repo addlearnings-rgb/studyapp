@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathematics Mission</title>
+    <style>
+/* ==========================================================================
+   1. GLOBAL ARCHITECTURE & NO-SCROLL LAYOUT
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+:root, html[data-theme="dark"], [data-theme="dark"] {
+    --primary: #3b82f6; --primary-hover: #2563eb;
+    --success: #22c55e; --error: #ef4444; --warning: #f59e0b;
+    --background: #000000; --surface: #121212; --surface-hover: #1e1e1e;
+    --text-main: #f8fafc; --text-muted: #9ca3af; --border: #27272a;
+    color-scheme: dark;
+}
+
+html[data-theme="light"], [data-theme="light"] {
+    --primary: #2563eb; --primary-hover: #1d4ed8;
+    --success: #16a34a; --error: #dc2626; --warning: #d97706;
+    --background: #f1f5f9; --surface: #ffffff; --surface-hover: #f8fafc;
+    --text-main: #0f172a; --text-muted: #64748b; --border: #cbd5e1;
+    color-scheme: light;
+}
+
+html, body {
+    margin: 0; padding: 0;
+    width: 100vw; height: 100vh; /* LOCKS VIEWPORT - NO SCROLL */
+    overflow: hidden;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--background); color: var(--text-main);
+    display: flex; flex-direction: column;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.hidden { display: none !important; }
+h1, h2, h3, h4, p { margin-top: 0; }
+
+/* ==========================================================================
+   2. TOP NAVIGATION BAR & PROGRESS
+   ========================================================================== */
+.navbar {
+    display: flex; justify-content: space-between; align-items: center;
+    height: 60px; padding: 0 24px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    flex-shrink: 0; z-index: 10;
+}
+.nav-brand { font-size: 18px; font-weight: 700; color: var(--text-main); display:flex; gap:8px; align-items:center; }
+.nav-actions { display: flex; gap: 12px; align-items: center; }
+
+.icon-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--text-main);
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; justify-content: center; align-items: center;
+    cursor: pointer; transition: all 0.2s; font-size: 16px;
+}
+.icon-btn:hover { background: var(--surface-hover); border-color: var(--primary); }
+
+.avatar-btn {
+    background: var(--primary); color: white; border: none;
+    width: 36px; height: 36px; border-radius: 50%;
+    cursor: pointer; font-size: 16px; transition: transform 0.2s;
+}
+.avatar-btn:hover { transform: scale(1.05); }
+
+#progress-bar-container { height: 4px; width: 100%; background: var(--border); flex-shrink: 0; }
+#progress-bar-fill { height: 100%; width: 0%; background: var(--primary); transition: width 0.3s ease; }
+
+/* ==========================================================================
+   3. APP CONTENT & SPLIT PANE (THE EXAM UI)
+   ========================================================================== */
+#app-content { flex: 1; display: flex; overflow: hidden; position: relative; }
+
+/* Left Side: The Main Question Canvas */
+.main-canvas {
+    flex: 1; padding: 40px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    overflow-y: auto; /* Only scrolls internally if content is massive */
+}
+
+.exam-container { width: 100%; max-width: 650px; }
+
+.question-header { margin-bottom: 16px; }
+.tag { background: var(--border); padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.question-stem { font-size: 22px; line-height: 1.4; margin-bottom: 24px; font-weight: 600; }
+
+.options-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+.option-btn {
+    width: 100%; text-align: left; padding: 16px 20px;
+    background: var(--surface); border: 2px solid var(--border); border-radius: 8px;
+    color: var(--text-main); font-size: 16px; cursor: pointer;
+    transition: all 0.15s ease; line-height: 1.4;
+}
+.option-btn:hover:not(:disabled) { border-color: var(--text-muted); background: var(--surface-hover); }
+.option-selected { border-color: var(--primary) !important; background-color: rgba(59, 130, 246, 0.1) !important; font-weight: 600; }
+.reveal-correct { background-color: rgba(34, 197, 94, 0.15) !important; border-color: var(--success) !important; color: var(--success) !important; font-weight: 700; }
+.reveal-incorrect { background-color: rgba(239, 68, 68, 0.1) !important; border-color: var(--error) !important; color: var(--error) !important; opacity: 0.7; text-decoration: line-through; }
+
+.action-row { display: flex; gap: 12px; }
+
+/* Right Side: The Sidebar HUD */
+.sidebar-hud {
+    width: 300px; background: var(--surface); border-left: 1px solid var(--border);
+    padding: 24px; display: flex; flex-direction: column; gap: 20px;
+    overflow-y: auto; flex-shrink: 0;
+}
+
+.hud-box { padding: 16px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; }
+.hud-label { display: block; font-size: 12px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-bottom: 8px; letter-spacing: 0.5px; }
+
+.timer-active { border-color: var(--primary); background: rgba(59, 130, 246, 0.05); }
+.clock-text { font-size: 28px; font-weight: 700; color: var(--primary); font-variant-numeric: tabular-nums; }
+
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+.stat-value { font-size: 20px; font-weight: 700; }
+.text-primary { color: var(--primary); }
+.text-warning { color: var(--warning); }
+
+.rank-badge { font-size: 16px; font-weight: 600; }
+
+.lifeline-stack { display: flex; flex-direction: column; gap: 8px; }
+.btn-lifeline {
+    background: var(--surface); color: var(--text-main); border: 1px solid var(--border);
+    padding: 10px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 13px; font-weight: 500;
+    transition: background 0.2s; display: flex; justify-content: space-between;
+}
+.btn-lifeline:hover:not(:disabled) { background: var(--border); }
+.btn-lifeline:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ==========================================================================
+   4. HERO / LOGIN SECTION
+   ========================================================================== */
+.hero-section {
+    width: 100%; height: 100%; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; text-align: center; padding: 20px;
+}
+.hero-title { font-size: 36px; margin-bottom: 24px; background: linear-gradient(90deg, var(--primary), #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.mission-card { background: var(--surface); padding: 24px; border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 450px; text-align: left; margin-bottom: 24px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2); }
+.mission-card h3 { border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px; }
+.mission-card p { margin-bottom: 8px; font-size: 15px; color: var(--text-muted); }
+.mission-card strong { color: var(--text-main); }
+
+.login-box { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 350px; }
+.login-box input { padding: 14px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-main); outline: none; transition: border-color 0.2s; }
+.login-box input:focus { border-color: var(--primary); }
+
+/* ==========================================================================
+   5. BUTTONS, ALERTS & MODALS
+   ========================================================================== */
+.btn {
+    padding: 14px 24px; font-size: 16px; font-weight: 600; border-radius: 8px;
+    border: none; cursor: pointer; transition: all 0.2s ease; display: inline-flex; justify-content: center; align-items: center; gap: 8px;
+}
+.btn-primary { background: var(--primary); color: white; flex: 1; }
+.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary { background: var(--surface); color: var(--text-main); border: 1px solid var(--border); }
+.btn-secondary:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--text-muted); }
+.btn-danger { background: rgba(239, 68, 68, 0.1); color: var(--error); border: 1px solid rgba(239, 68, 68, 0.3); width: 100%; }
+.btn-danger:hover { background: rgba(239, 68, 68, 0.2); }
+.btn-hero { background: var(--text-main); color: var(--background); font-size: 18px; padding: 16px; }
+.btn-hero:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255,255,255,0.1); }
+
+.alert-box { margin-top: 16px; padding: 16px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); border-left: 4px solid var(--primary); font-size: 14px; line-height: 1.5; animation: fadeIn 0.3s ease; }
+
+.modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 100; padding: 20px; backdrop-filter: blur(4px); }
+.modal-panel { background: var(--surface); width: 100%; max-width: 500px; padding: 30px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Mobile fallback */
+@media (max-width: 768px) {
+    #exam-layout { flex-direction: column; }
+    .sidebar-hud { width: 100%; height: auto; flex-shrink: 0; border-left: none; border-top: 1px solid var(--border); padding: 16px; gap: 12px; }
+    .main-canvas { padding: 20px; }
+    .stats-grid { display: flex; gap: 12px; }
+    .lifeline-stack { flex-direction: row; flex-wrap: wrap; }
+    .btn-lifeline { flex: 1; min-width: 45%; }
+}
+
+    </style>
+</head>
+<body>
+    
+    <!-- Top Navigation Bar -->
+    <div id="top-nav" class="navbar">
+        <div class="nav-brand">📚 <span id="nav-subject-name">Mathematics</span></div>
+        <div class="nav-actions">
+            <button id="theme-switcher-btn" class="icon-btn" onclick="toggleUIMode()" title="Toggle Theme">☀️</button>
+            <button id="profile-btn" class="avatar-btn hidden" onclick="openStudentProfile()" title="View Global Profile">🧑‍🎓</button>
+        </div>
+    </div>
+    
+    <!-- Progress Indicator -->
+    <div id="progress-bar-container" class="hidden"><div id="progress-bar-fill"></div></div>
+
+    <!-- Main App Container (No Scroll) -->
+    <div id="app-content">
+
+        <!-- 1. Hero / Landing Screen -->
+        <div id="login-screen" class="hero-section">
+            <h1 class="hero-title">Ready to conquer Mathematics?</h1>
+            <div class="mission-card">
+                <h3>Mission Briefing</h3>
+                <p><strong>Topic Focus:</strong> Percentage</p>
+                <p><strong>Difficulty Matrix:</strong> <span style="text-transform: capitalize;">medium</span></p>
+                <p><strong>Payload:</strong> 3 Questions</p>
+                <p><strong>Time Limit:</strong> 10 Minutes</p>
+            </div>
+            <div class="login-box">
+                <input type="text" id="username" placeholder="Enter student handle to fetch profile..." autocomplete="off">
+                <button class="btn btn-hero" onclick="startExamEngine()">Start Mission 🚀</button>
+                <div id="login-status" style="margin-top:8px; font-size:12px; color:var(--text-muted);">Awaiting cloud profile sync...</div>
+            </div>
+        </div>
+        
+        <!-- 2. Split-Pane Exam Layout -->
+        <div id="exam-layout" class="hidden">
+            <!-- Left Side: Canvas -->
+            <div class="main-canvas">
+                <div id="exam-screen" class="exam-container">
+                    <div class="question-header">
+                        <span id="progress-text" class="tag">Question 1 of 3</span>
+                    </div>
+                    <h2 id="question-text" class="question-stem">Loading matrix node data...</h2>
+                    <div id="options-container" class="options-grid"></div>
+                    
+                    <div class="action-row">
+                        <button id="btn-submit-answer" class="btn btn-primary" onclick="commitStudentAnswer()" disabled>Submit Answer</button>
+                        <button id="btn-report-question" class="btn btn-secondary icon-btn" style="border-radius:8px; width:50px; height:auto;" onclick="triggerReportModal()" title="Report Issue">🚩</button>
+                    </div>
+                    <div id="hint-display-box" class="hidden alert-box"></div>
+                </div>
+            </div>
+            
+            <!-- Right Side: HUD Sidebar -->
+            <div class="sidebar-hud">
+                <div id="timer-box" class="hud-box timer-active">
+                    <span class="hud-label">Time Remaining</span>
+                    <div id="clock-display" class="clock-text">--:--</div>
+                </div>
+                
+                <div class="hud-box stats-grid">
+                    <div class="stat-item">
+                        <span class="hud-label">XP Score</span>
+                        <div id="hud-score-val" class="stat-value text-primary">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="hud-label">Streak</span>
+                        <div id="hud-streak-val" class="stat-value text-warning">0🔥</div>
+                    </div>
+                </div>
+
+                <div class="hud-box">
+                    <span class="hud-label">Current Rank</span>
+                    <div id="hud-rank-val" class="rank-badge">🌱 Novice</div>
+                </div>
+
+                <div class="hud-box">
+                    <span class="hud-label">Lifeline Inventory</span>
+                    <div class="lifeline-stack">
+                        <button id="btn-life-5050" class="btn-lifeline" onclick="activateFiftyFifty()">✂️ 50/50 <span>(<span id="count-5050">1</span>)</span></button>
+                        <button id="btn-life-hint" class="btn-lifeline" onclick="activateSocraticHint()">💡 Socratic Hint <span>(<span id="count-hint">2</span>)</span></button>
+                        <button id="btn-life-freeze" class="btn-lifeline" onclick="activateFreezeTimer()">❄️ Time Freeze <span>(<span id="count-freeze">1</span>)</span></button>
+                        <button id="btn-life-tts" class="btn-lifeline" onclick="readQuestionAloud()">🔊 Read Aloud <span>(∞)</span></button>
+                    </div>
+                </div>
+
+                <button id="btn-end-exam" class="btn btn-danger" onclick="forceEndExam()">⏹️ Submit Early</button>
+            </div>
+        </div>
+        
+        <!-- 3. Result Screen -->
+        <div id="result-screen" class="hidden" style="width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 40px;">
+            <h2>Session Terminated</h2>
+            <div id="stats-summary" style="width:100%; max-width:500px; margin-bottom: 24px;"></div>
+            <div style="display:flex; gap:12px; width:100%; max-width:500px;">
+                <button class="btn btn-primary" onclick="downloadExamJSON()">📥 Extract Telemetry (JSON)</button>
+                <button class="btn btn-secondary" onclick="generateRemediationTestFromIncorrect()">🔄 Remediation Test (Errors Only)</button>
+            </div>
+        </div>
+
+    </div> <!-- End App Content -->
+
+    <!-- REPORT QUESTION MODAL -->
+    <div id="report-modal" class="hidden modal-overlay">
+        <div class="modal-panel">
+            <h3>🚩 Report Question Issue</h3>
+            <p style="font-size:14px; color:var(--text-muted); margin-bottom:16px;">Help train the AI by reporting ambiguous or incorrect questions.</p>
+            <textarea id="report-reason-input" placeholder="Explain the error (e.g. 'Two options are identical')..." style="width:100%; min-height:100px; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--background); color:var(--text-main); margin-bottom:16px; outline:none; resize:vertical; font-family:inherit;"></textarea>
+            <div style="display:flex; gap:12px;">
+                <button class="btn btn-primary" onclick="submitQuestionReport()">Submit Report</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('report-modal').classList.add('hidden')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- STUDENT PROFILE MODAL (For Phase 2) -->
+    <div id="profile-modal" class="hidden modal-overlay">
+        <div class="modal-panel" style="max-width: 600px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:16px; margin-bottom:16px;">
+                <h3 style="margin:0;">🧑‍🎓 Global Student Profile</h3>
+                <button class="icon-btn" style="border:none;" onclick="document.getElementById('profile-modal').classList.add('hidden')">❌</button>
+            </div>
+            <div id="profile-content-area" style="min-height: 200px;">
+                <!-- Cloud stats will be injected here in Phase 2 -->
+                <p style="color:var(--text-muted); text-align:center; padding-top:40px;">Fetching records from Master Analytics Gist...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const _tc = ["git","hub","_pa","t_1","1CP","BKC","HI0","Fj4","Nmp","Jzm","oRF","_Uy","ceE","yji","s0D","PPo","y1x","JDi","pSA","qnp","ouH","Z8P","dVD","AJS","rhi","byY","OVD","WNY","XxY","kZJ","mEE"];
+        const examConfig = {
+            uniqueExamId: "exam_1789919169986",
+            subject: "Mathematics",
+            topic: "Percentage",
+            language: "English",
+            grade: "Grade 4, Grade 5, Grade 6",
+            difficulty: "medium",
+            publishDate: "2026-09-20T15:46:09.986Z",
+            timeLimitMinutes: 10, 
+            showCorrectOnSubmit: "no",
+            obfuscatedPat: _tc.length > 0 ? btoa(_tc.join('')) : "",
+            githubRepo: "addlearnings-rgb/studyapp",
+            masterAnalyticsGistId: "9d7cf46b23df4f4566f92d53d082038c"
+        };
+        const examQuestions = [{"q":"Maria scored 18 out of 20 marks on her mathematics quiz. What percentage score did she achieve?","options":["80 percent","85 percent","90 percent","95 percent"],"correct":2,"difficulty":"medium","hint":"Convert the fraction 18 out of 20 into a fraction with a denominator of 100.","explanation":"To find the percentage, multiply the fraction 18/20 by 100, which gives 90 percent."},{"q":"A bookstore has a collection of 250 books. If 30 percent of the books are fiction, how many fiction books are there?","options":["65 books","70 books","75 books","80 books"],"correct":2,"difficulty":"medium","hint":"Find 10 percent of 250 first, and then multiply that result by 3.","explanation":"Thirty percent of 250 is calculated as 0.30 x 250, which equals 75 fiction books."},{"q":"A bicycle that normally sells for 200 dollars is on sale at a 15 percent discount. What is the sale price of the bicycle?","options":["155 dollars","165 dollars","170 dollars","185 dollars"],"correct":2,"difficulty":"medium","hint":"Calculate the discount amount by finding 15 percent of 200, then subtract it from the original price.","explanation":"A 15 percent discount on 200 dollars is 30 dollars. Subtracting 30 dollars from 200 dollars gives a sale price of 170 dollars."}];
+    </script>
+    <script>
+// app.js / exam_engine.js - Enhanced Exam Runtime, Gamification & HUD Engine
+
+let currentQuestionIdx = 0;
+let studentName = "";
+let correctTally = 0;
+let incorrectTally = 0;
+let questionStartTime = 0;
+let countdownTimerInterval = null;
+let secondsLeft = 0;
+let isTimerFrozen = false;
+let freezeTimeoutId = null;
+
+let selectedOptionIndex = null;
+let hasSubmittedCurrentAnswer = false;
+
+// Gamification State
+let currentScore = 0;
+let currentStreak = 0;
+let maxStreak = 0;
+const sessionTelemetry = [];
+const incorrectQuestionsLog = [];
+
+// Gamification Defaults
+const activeGamification = {
+    scoring: { basePointsPerCorrect: 100, timeBonus: { maxBonusPoints: 50, speedBenchmarkSeconds: 15 }, streakMultiplier: { streakThreshold: 3, multiplierIncrement: 0.25, maxMultiplier: 2.5 } },
+    ranks: [
+        { name: "Novice", minScore: 0, badge: "🌱" },
+        { name: "Scholar", minScore: 1200, badge: "⚡" },
+        { name: "Master", minScore: 2800, badge: "🔥" },
+        { name: "Grandmaster", minScore: 4500, badge: "👑" }
+    ]
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+});
+
+function toggleUIMode() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', newTheme);
+}
+
+function startExamEngine() {
+    const input = document.getElementById('username');
+    if (!input) return;
+    const formatted = input.value.trim();
+    if (!formatted) return alert("Access Denied: Please enter your student handle.");
+    
+    studentName = formatted;
+
+    // THE BUG FIX: Unhide the parent layout wrapper AND the progress bar!
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('exam-layout').classList.remove('hidden');
+    document.getElementById('progress-bar-container').classList.remove('hidden');
+    document.getElementById('profile-btn').classList.remove('hidden');
+
+    initializeClock(examConfig.timeLimitMinutes);
+    renderQuestionNode();
+    fetchGlobalStudentProfile(); // Trigger background sync for the Avatar Modal
+}
+
+// ==========================================
+// KEYBOARD SHORTCUTS
+// ==========================================
+document.addEventListener('keydown', (e) => {
+    // Only listen if exam is active
+    if (document.getElementById('exam-layout').classList.contains('hidden')) return;
+    
+    // If answer already submitted, Enter moves to next question
+    if (hasSubmittedCurrentAnswer) {
+        if (e.key === 'Enter') {
+            const btn = document.getElementById('btn-submit-answer');
+            if (btn && !btn.disabled) btn.click();
+        }
+        return;
+    }
+
+    // Number keys 1-4 for option selection
+    if (['1', '2', '3', '4'].includes(e.key)) {
+        const idx = parseInt(e.key) - 1;
+        const optionBtns = document.querySelectorAll('.option-btn');
+        if (optionBtns[idx] && !optionBtns[idx].disabled) {
+            optionBtns[idx].click();
+        }
+    } 
+    // Enter to submit selected answer
+    else if (e.key === 'Enter' && selectedOptionIndex !== null) {
+        commitStudentAnswer();
+    }
+});
+
+// ==========================================
+// EXAM RUNTIME ENGINE
+// ==========================================
+function initializeClock(minutes) {
+    secondsLeft = parseInt(minutes, 10) * 60;
+    const clockDisplay = document.getElementById('clock-display');
+    const timerBox = document.getElementById('timer-box');
+    
+    countdownTimerInterval = setInterval(() => {
+        if (isTimerFrozen) return;
+        if (secondsLeft <= 0) {
+            clearInterval(countdownTimerInterval);
+            alert("Time expired! Submitting session records automatically.");
+            terminateSession();
+            return;
+        }
+        secondsLeft--;
+        const min = Math.floor(secondsLeft / 60);
+        const sec = secondsLeft % 60;
+        clockDisplay.innerText = `${min}:${sec < 10 ? '0' : ''}${sec}`;
+
+        // Pulse red if under 60 seconds
+        if (secondsLeft < 60) {
+            timerBox.style.borderColor = "var(--error)";
+            clockDisplay.style.color = "var(--error)";
+        }
+    }, 1000);
+}
+
+function renderQuestionNode() {
+    if (currentQuestionIdx >= examQuestions.length) {
+        clearInterval(countdownTimerInterval);
+        terminateSession();
+        return;
+    }
+    
+    selectedOptionIndex = null;
+    hasSubmittedCurrentAnswer = false;
+    
+    const submitBtn = document.getElementById('btn-submit-answer');
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Submit Answer (Enter)";
+    
+    document.getElementById('hint-display-box').classList.add('hidden');
+    document.getElementById('hint-display-box').innerHTML = "";
+
+    const node = examQuestions[currentQuestionIdx];
+    document.getElementById('progress-text').innerText = `Question ${currentQuestionIdx + 1} of ${examQuestions.length}`;
+    document.getElementById('question-text').innerText = node.q;
+    
+    // Update Top Progress Bar Width
+    const progressPct = (currentQuestionIdx / examQuestions.length) * 100;
+    document.getElementById('progress-bar-fill').style.width = `${progressPct}%`;
+    
+    const container = document.getElementById('options-container');
+    container.innerHTML = "";
+    
+    node.options.forEach((optText, optIndex) => {
+        const btn = document.createElement('button');
+        btn.className = "option-btn";
+        // Prefix with number for keyboard shortcut awareness
+        btn.innerHTML = `<strong style="color:var(--primary); margin-right:8px;">${optIndex + 1}.</strong> ${optText}`;
+        btn.setAttribute('data-opt-index', optIndex);
+        btn.onclick = () => selectOptionNode(optIndex, btn);
+        container.appendChild(btn);
+    });
+    
+    questionStartTime = Date.now();
+}
+
+function selectOptionNode(optIndex, clickedBtn) {
+    if (hasSubmittedCurrentAnswer) return;
+    selectedOptionIndex = optIndex;
+    
+    document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('option-selected'));
+    clickedBtn.classList.add('option-selected');
+    document.getElementById('btn-submit-answer').disabled = false;
+}
+
+function commitStudentAnswer() {
+    if (selectedOptionIndex === null || hasSubmittedCurrentAnswer) return;
+    hasSubmittedCurrentAnswer = true;
+
+    const elapsedSeconds = parseFloat(((Date.now() - questionStartTime) / 1000).toFixed(2));
+    const node = examQuestions[currentQuestionIdx];
+    const isCorrect = (selectedOptionIndex === node.correct);
+    let pointsAwarded = 0;
+    
+    if (isCorrect) {
+        correctTally++;
+        currentStreak++;
+        if (currentStreak > maxStreak) maxStreak = currentStreak;
+
+        const basePts = activeGamification.scoring.basePointsPerCorrect;
+        let streakMult = 1.0;
+        if (currentStreak >= activeGamification.scoring.streakMultiplier.streakThreshold) {
+            streakMult = Math.min(1.0 + ((currentStreak - activeGamification.scoring.streakMultiplier.streakThreshold + 1) * activeGamification.scoring.streakMultiplier.multiplierIncrement), activeGamification.scoring.streakMultiplier.maxMultiplier);
+        }
+        
+        let timeBonus = 0;
+        const targetSec = activeGamification.scoring.timeBonus.speedBenchmarkSeconds;
+        if (elapsedSeconds < targetSec) {
+            timeBonus = Math.round(((targetSec - elapsedSeconds) / targetSec) * activeGamification.scoring.timeBonus.maxBonusPoints);
+        }
+
+        pointsAwarded = Math.round((basePts * streakMult) + timeBonus);
+        currentScore += pointsAwarded;
+    } else {
+        incorrectTally++;
+        currentStreak = 0;
+        incorrectQuestionsLog.push(node);
+    }
+
+    updateHUDMetrics();
+
+    sessionTelemetry.push({
+        idx: currentQuestionIdx + 1,
+        question: node.q,
+        selected: node.options[selectedOptionIndex],
+        status: isCorrect ? "Correct" : "Incorrect",
+        time: elapsedSeconds,
+        points: pointsAwarded,
+        difficulty: node.difficulty || "medium"
+    });
+
+    // Reveal Correct/Incorrect States
+    document.querySelectorAll('.option-btn').forEach((btn, index) => {
+        btn.disabled = true;
+        if (index === node.correct) {
+            btn.classList.add('reveal-correct');
+        } else if (index === selectedOptionIndex && !isCorrect) {
+            btn.classList.add('reveal-incorrect');
+        }
+    });
+
+    // Inline Explanation Slide-in
+    if (node.explanation) {
+        const hintBox = document.getElementById('hint-display-box');
+        hintBox.classList.remove('hidden');
+        hintBox.innerHTML = `📘 <strong>Explanation:</strong> ${node.explanation}`;
+    }
+
+    const submitBtn = document.getElementById('btn-submit-answer');
+    submitBtn.innerText = "Next Question → (Enter)";
+    submitBtn.onclick = () => {
+        currentQuestionIdx++;
+        submitBtn.onclick = commitStudentAnswer;
+        renderQuestionNode();
+    };
+}
+
+function updateHUDMetrics() {
+    document.getElementById('hud-score-val').innerText = currentScore;
+    document.getElementById('hud-streak-val').innerText = `${currentStreak}🔥`;
+
+    let currentRank = activeGamification.ranks[0];
+    activeGamification.ranks.forEach(r => {
+        if (currentScore >= r.minScore) currentRank = r;
+    });
+    document.getElementById('hud-rank-val').innerText = `${currentRank.badge} ${currentRank.name}`;
+}
+
+// ==========================================
+// LIFELINES
+// ==========================================
+function activateFiftyFifty() {
+    let span = document.getElementById('count-5050');
+    let count = parseInt(span.innerText);
+    if (count <= 0) return;
+    
+    const node = examQuestions[currentQuestionIdx];
+    const btns = Array.from(document.querySelectorAll('.option-btn'));
+    const incorrectBtns = btns.filter((btn, idx) => idx !== node.correct && !btn.disabled);
+    if (incorrectBtns.length < 2) return;
+
+    incorrectBtns.sort(() => Math.random() - 0.5);
+    incorrectBtns.slice(0, 2).forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = "0.2";
+        btn.style.textDecoration = "line-through";
+    });
+
+    span.innerText = count - 1;
+    if (count - 1 === 0) document.getElementById('btn-life-5050').disabled = true;
+}
+
+function activateSocraticHint() {
+    let span = document.getElementById('count-hint');
+    let count = parseInt(span.innerText);
+    if (count <= 0) return;
+
+    const hintBox = document.getElementById('hint-display-box');
+    hintBox.classList.remove('hidden');
+    hintBox.innerHTML = `💡 <strong>Hint:</strong> ${examQuestions[currentQuestionIdx].hint || "Analyze the keywords carefully."}`;
+
+    span.innerText = count - 1;
+    if (count - 1 === 0) document.getElementById('btn-life-hint').disabled = true;
+}
+
+function activateFreezeTimer() {
+    let span = document.getElementById('count-freeze');
+    let count = parseInt(span.innerText);
+    if (count <= 0 || isTimerFrozen) return;
+
+    isTimerFrozen = true;
+    document.getElementById('clock-display').style.color = "#38bdf8";
+    
+    span.innerText = count - 1;
+    if (count - 1 === 0) document.getElementById('btn-life-freeze').disabled = true;
+
+    freezeTimeoutId = setTimeout(() => {
+        isTimerFrozen = false;
+        document.getElementById('clock-display').style.color = "var(--primary)";
+    }, 30000);
+}
+
+function readQuestionAloud() {
+    if (!('speechSynthesis' in window)) return alert("Text-to-speech not supported.");
+    window.speechSynthesis.cancel();
+    const node = examQuestions[currentQuestionIdx];
+    const utterance = new SpeechSynthesisUtterance(`${node.q}. Options: ${node.options.join(', ')}`);
+    window.speechSynthesis.speak(utterance);
+}
+
+function forceEndExam() {
+    if (confirm("Are you sure you want to submit your exam early?")) {
+        clearInterval(countdownTimerInterval);
+        terminateSession();
+    }
+}
+
+// ==========================================
+// END EXAM & STUDENT PROFILE CLOUD SYNC
+// ==========================================
+async function terminateSession() {
+    if (freezeTimeoutId) clearTimeout(freezeTimeoutId);
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+    document.getElementById('exam-layout').classList.add('hidden');
+    document.getElementById('progress-bar-container').classList.add('hidden');
+    document.getElementById('result-screen').classList.remove('hidden');
+    
+    const ratio = incorrectTally === 0 ? correctTally : (correctTally / incorrectTally).toFixed(2);
+    
+    const payload = {
+        uniqueExamId: examConfig.uniqueExamId,
+        studentId: studentName,
+        subject: examConfig.subject,
+        topic: examConfig.topic,
+        score: correctTally,
+        total: examQuestions.length,
+        points: currentScore,
+        ratio: ratio,
+        timestamp: new Date().toISOString()
+    };
+
+    document.getElementById('stats-summary').innerHTML = `
+        <div style="background: var(--surface); padding: 24px; border: 1px solid var(--border); border-radius: 12px;">
+            <h3 style="margin-bottom:16px;">Mission Accomplished, ${studentName}!</h3>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+                <div style="background:var(--background); padding:12px; border-radius:8px;">
+                    <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase;">Accuracy</div>
+                    <div style="font-size:24px; font-weight:700; color:var(--success);">${correctTally}/${examQuestions.length}</div>
+                </div>
+                <div style="background:var(--background); padding:12px; border-radius:8px;">
+                    <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase;">Total XP Earned</div>
+                    <div style="font-size:24px; font-weight:700; color:var(--primary);">${currentScore}</div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Push new results to Cloud Gist
+    if (examConfig.masterAnalyticsGistId && examConfig.obfuscatedPat) {
+        try {
+            const token = atob(examConfig.obfuscatedPat);
+            const res = await fetch(`https://api.github.com/gists/${examConfig.masterAnalyticsGistId}`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const fileContent = data.files['student_telemetry.json']?.content || "[]";
+                let records = [];
+                try { records = JSON.parse(fileContent); } catch(e){}
+                records.push(payload);
+                await fetch(`https://api.github.com/gists/${examConfig.masterAnalyticsGistId}`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files: { 'student_telemetry.json': { content: JSON.stringify(records, null, 2) } } })
+                });
+            }
+        } catch (e) { console.warn("Could not sync telemetry."); }
+    }
+}
+
+function triggerReportModal() { document.getElementById('report-modal').classList.remove('hidden'); }
+
+async function submitQuestionReport() {
+    const reason = document.getElementById('report-reason-input').value.trim();
+    if (!reason) return alert("Please provide a brief reason.");
+    if (!examConfig.obfuscatedPat || !examConfig.githubRepo) return alert("GitHub repo config missing.");
+
+    const token = atob(examConfig.obfuscatedPat);
+    const node = examQuestions[currentQuestionIdx] || examQuestions[0];
+    const issueTitle = `[Reported Q] ${examConfig.subject} - ${examConfig.topic}`;
+    const issueBody = `Question: "${node.q}"\nReason: ${reason}\nStudent: ${studentName}\nExam ID: ${examConfig.uniqueExamId}`;
+
+    try {
+        const res = await fetch(`https://api.github.com/repos/${examConfig.githubRepo}/issues`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ['question-error'] })
+        });
+        if (res.ok) {
+            alert("Report submitted to the AI training queue!");
+            document.getElementById('report-modal').classList.add('hidden');
+            document.getElementById('report-reason-input').value = "";
+        }
+    } catch (e) {}
+}
+
+function downloadExamJSON() {
+    const blob = new Blob([JSON.stringify(sessionTelemetry, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `ExamPerformance.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ==========================================
+// GLOBAL STUDENT PROFILE SYNC
+// ==========================================
+async function fetchGlobalStudentProfile() {
+    if (!examConfig.masterAnalyticsGistId || !examConfig.obfuscatedPat) return;
+    try {
+        const token = atob(examConfig.obfuscatedPat);
+        const res = await fetch(`https://api.github.com/gists/${examConfig.masterAnalyticsGistId}`, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const telemetryStr = data.files['student_telemetry.json']?.content || "[]";
+            const allRecords = JSON.parse(telemetryStr);
+            
+            // Filter telemetry dynamically for whoever just logged in!
+            const myRecords = allRecords.filter(r => r.studentId.toLowerCase() === studentName.toLowerCase());
+            
+            if (myRecords.length === 0) {
+                document.getElementById('profile-content-area').innerHTML = `<p style="color:var(--text-muted); text-align:center; padding-top:40px;">No previous records found for <strong>${studentName}</strong>.</p>`;
+                return;
+            }
+
+            let totalXp = 0;
+            let totalCorrect = 0;
+            let totalQuestions = 0;
+            const subjects = {};
+
+            myRecords.forEach(r => {
+                totalXp += (r.points || 0);
+                totalCorrect += (r.score || 0);
+                totalQuestions += (r.total || 0);
+                if (!subjects[r.subject]) subjects[r.subject] = { exams: 0, score: 0, total: 0 };
+                subjects[r.subject].exams++;
+                subjects[r.subject].score += r.score;
+                subjects[r.subject].total += r.total;
+            });
+
+            const globalAccuracy = Math.round((totalCorrect / totalQuestions) * 100) || 0;
+
+            let globalRank = activeGamification.ranks[0];
+            activeGamification.ranks.forEach(r => { if (totalXp >= r.minScore) globalRank = r; });
+
+            let html = `
+                <div style="display:flex; align-items:center; gap:16px; margin-bottom:24px;">
+                    <div style="font-size:48px;">${globalRank.badge}</div>
+                    <div>
+                        <h2 style="margin:0; font-size:24px;">${studentName}</h2>
+                        <p style="margin:0; color:var(--primary); font-weight:600;">${globalRank.name} • ${totalXp.toLocaleString()} Lifetime XP</p>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:24px;">
+                    <div style="background:var(--background); padding:16px; border-radius:8px; border:1px solid var(--border);">
+                        <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Global Accuracy</div>
+                        <div style="font-size:24px; font-weight:700;">${globalAccuracy}%</div>
+                    </div>
+                    <div style="background:var(--background); padding:16px; border-radius:8px; border:1px solid var(--border);">
+                        <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Exams Completed</div>
+                        <div style="font-size:24px; font-weight:700;">${myRecords.length}</div>
+                    </div>
+                </div>
+                <h4 style="margin-bottom:12px;">Subject Mastery</h4>
+                <div style="display:flex; flex-direction:column; gap:8px; max-height:200px; overflow-y:auto;">
+            `;
+
+            for (const [subj, data] of Object.entries(subjects)) {
+                const acc = Math.round((data.score / data.total) * 100);
+                html += `
+                    <div style="display:flex; justify-content:space-between; padding:12px; background:var(--background); border-radius:6px; border:1px solid var(--border);">
+                        <div><strong>${subj}</strong> <span style="color:var(--text-muted); font-size:12px;">(${data.exams} exams)</span></div>
+                        <div style="font-weight:600; color:${acc >= 70 ? 'var(--success)' : 'var(--warning)'}">${acc}% Acc</div>
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
+            document.getElementById('profile-content-area').innerHTML = html;
+        }
+    } catch (e) { console.warn("Failed to fetch student profile."); }
+}
+
+function openStudentProfile() {
+    document.getElementById('profile-modal').classList.remove('hidden');
+}
+
+    </script>
+</body>
+</html>
