@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathematics Evaluation Testing Portal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="panel" style="max-width:540px; margin:auto; position:relative;">
+        <div style="text-align:right;"><button id="theme-switcher-btn" class="btn btn-secondary" style="width:auto; margin:0; padding:6px 12px; font-size:12px;" onclick="toggleUIMode()">☀️ Light Mode</button></div>
+        <div id="login-screen">
+            <h2>Active Portal: Mathematics</h2>
+            <p style="color:var(--text-muted); font-size:14px; margin-top:-5px;">Topic Context: Percentage | Target: Grade 4, Grade 5</p>
+            <label>User Verification Handle</label>
+            <input type="text" id="username" placeholder="Enter student identifier..." style="margin-top:5px; margin-bottom:15px;">
+            <button class="btn" onclick="startExamEngine()">Authenticate Session</button>
+        </div>
+        <div id="exam-screen" class="hidden">
+            <div class="meta-row"><span id="progress-text"></span><span id="clock-display" style="font-weight:600; color:var(--primary);">Clock running...</span></div>
+            <h3 id="question-text">Reading matrix node data...</h3>
+            <div id="options-container"></div>
+        </div>
+        <div id="result-screen" class="hidden">
+            <h2>Session Terminated</h2><div id="stats-summary"></div>
+            <button class="btn" onclick="downloadExamCSV()">📥 Extract Performance Logs (CSV)</button>
+        </div>
+    </div>
+    <script>
+        const examConfig = { 
+            timeLimitMinutes: 120, 
+            showCorrectOnSubmit: "yes",
+            gamification: {"enabled":true,"scoring":{"basePointsPerCorrect":100,"timeBonus":{"enabled":true,"maxBonusPoints":50,"speedBenchmarkSeconds":15},"streakMultiplier":{"enabled":true,"streakThreshold":3,"multiplierIncrement":0.25,"maxMultiplier":2.5}},"lifelines":{"fiftyFiftyCount":1,"aiHintCount":2,"freezeTimerCount":1,"freezeDurationSeconds":30},"ranks":[{"name":"Novice","minScore":0,"badge":"🌱"},{"name":"Scholar","minScore":1200,"badge":"⚡"},{"name":"Master","minScore":2800,"badge":"🔥"},{"name":"Grandmaster","minScore":4500,"badge":"👑"}],"soundEffects":{"enabled":true,"volume":0.6}}
+        };
+        const examQuestions = [{"q":"A bag contains 10 marbles. If 5 are red, what is the ratio of red marbles to the total number of marbles expressed as a percentage?","options":["25 percent","50 percent","75 percent","100 percent"],"correct":1,"difficulty":"very low","hint":"Think about how many red marbles there are compared to the whole group of 10.","explanation":"The ratio is 5 out of 10, which is equal to one-half or 50 percent of the total."},{"q":"In a class of 20 students, 5 students wear glasses. What percentage of the class wears glasses, based on the ratio of students with glasses to the total class?","options":["5 percent","10 percent","20 percent","25 percent"],"correct":3,"difficulty":"very low","hint":"If you have 5 out of 20, how many would you have if the total were 100?","explanation":"The ratio 5/20 is equivalent to 25/100, which represents 25 percent."},{"q":"A fruit basket has 4 apples and 1 orange. What is the ratio of apples to the total number of fruits, expressed as a percentage?","options":["20 percent","40 percent","80 percent","100 percent"],"correct":2,"difficulty":"very low","hint":"Count the total number of fruits first, then compare the number of apples to that total.","explanation":"There are 5 total fruits and 4 are apples; 4 out of 5 is the same as 80 out of 100, or 80 percent."}];
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>
